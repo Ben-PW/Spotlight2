@@ -16,21 +16,14 @@ if (!dir.exists(here::here("Results"))) {
   )
 }
 
-# Specify db path 
+# Specify db path using variables defined in Spotlight_main.R
 
-db_path <- here::here(
-  "Results",
-  "spotlight_probability_results.duckdb"
-)
+db_path <- database_path
 
-# Check for existing so don't append new results to old
 if (file.exists(db_path)) {
   
-  ans <- readline(
-    prompt = "Existing DuckDB detected. Y = delete and continue: "
-  )
-  
-  if (tolower(ans) == "y") {
+  if (overwrite_database) {
+    
     file.remove(db_path)
     
     wal_path <- paste0(db_path, ".wal")
@@ -40,7 +33,12 @@ if (file.exists(db_path)) {
     }
     
   } else {
-    stop("Exiting")
+    
+    stop(
+      "Database already exists: ",
+      db_path,
+      "\nSet overwrite_database <- TRUE in main.R to replace it."
+    )
   }
 }
 
@@ -68,9 +66,9 @@ on.exit(
 #source(here::here("Scripts", "Data_simulation.R"))
 source(here::here("Scripts", "Error_simulation_helpers.R"))
 
-#datasets <- readRDS(
+# datasets <- readRDS(
 #  here::here("Data", "datasets_final")
-#)
+# )
 
 # Filter to remove nonconforming cases
 # IMPORTANT: code to do this is in Data_simulation.R, as that is where it 

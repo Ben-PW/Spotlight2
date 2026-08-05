@@ -1,7 +1,21 @@
 library(ggplot2)
 library(dplyr)
 
-here::here()
+# here::here()
+
+if (!dir.exists(here::here("Figures"))) {
+  dir.create(
+    here::here("Figures"),
+    recursive = TRUE
+  )
+}
+
+if (!dir.exists(here::here("Figures", "Figures_supplemental"))) {
+  dir.create(
+    here::here("Figures", "Figures_supplemental"),
+    recursive = TRUE
+  )
+}
 
 ################################### Sampling completeness #############################
 
@@ -99,5 +113,6 @@ source(here::here("Scripts", "Vis_scripts", "Node_rank_change.R"))
 # - GT centralisation
 # - alpha
 
+# Required dataframe: rank_lift_df2
 source(here::here("Scripts", "Vis_scripts", "Spotlight_strength_plot3.R"))
 

@@ -146,6 +146,50 @@ coverage_heatmaps <- lapply(
 names(coverage_heatmaps) <-
   levels(coverage_heatmap_df$spotlight_pct)
 
-coverage_heatmaps$`5%`
-coverage_heatmaps$`1%`
-coverage_heatmaps$`10%`
+# coverage_heatmaps$`5%`
+# coverage_heatmaps$`1%`
+# coverage_heatmaps$`10%`
+
+# Store main figure
+ggplot2::ggsave(
+  filename = here::here(
+    "Figures",
+    "10pct_coverage_heatmap.pdf"
+  ),
+  plot = coverage_heatmaps$`10%`,
+  device = grDevices::cairo_pdf,
+  width = 180,
+  height = 135,
+  units = "mm",
+  bg = "white"
+)
+
+# Store supplemental figures
+
+ggplot2::ggsave(
+  filename = here::here(
+    "Figures",
+    "Figures_supplemental",
+    "5pct_coverage_heatmap.pdf"
+  ),
+  plot = coverage_heatmaps$`5%`,
+  device = grDevices::cairo_pdf,
+  width = 180,
+  height = 135,
+  units = "mm",
+  bg = "white"
+)
+
+ggplot2::ggsave(
+  filename = here::here(
+    "Figures",
+    "Figures_supplemental",
+    "1pct_coverage_heatmap.pdf"
+  ),
+  plot = coverage_heatmaps$`1%`,
+  device = grDevices::cairo_pdf,
+  width = 180,
+  height = 135,
+  units = "mm",
+  bg = "white"
+)
