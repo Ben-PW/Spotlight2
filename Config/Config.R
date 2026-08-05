@@ -5,6 +5,18 @@
 # and spotlight observation simulation. The default values reproduce the
 # settings currently used in the analysis scripts.
 #
+# Workflow controls:
+#   determine which simulation stages are run
+#
+# File paths and output handling:
+#   controls paths for dataset loading, writing results to db, 
+#   querying results from db
+#
+# Basis network simulation parameters:
+#   controls the parameters of the simulated artificial networks
+#
+# Spotlight simulation:
+#   controls the parameters of the simulated spotlight process
 ################################################################################
 
 config <- list(

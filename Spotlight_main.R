@@ -10,6 +10,8 @@
 #
 #   It then runs the spotlight simulation, database queries, and visualisations
 #   according to the options specified below.
+#   If a database already exists, you can alter the config file to run just
+#   The queries and visualisations
 ################################################################################
 
 
