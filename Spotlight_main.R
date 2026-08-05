@@ -1,4 +1,3 @@
-
 ################################################################################
 # Script: main.R
 #
@@ -14,50 +13,18 @@
 ################################################################################
 
 
-################################ Set up file management ##########################
+############################ Source user defined vars ##########################
 
-here::here()
-
-
-################################ User options ###################################
-
-# TRUE  = regenerate the ground-truth networks from scratch (several hours)
-# FALSE = load the supplied pre-generated datasets file
-
-full_rerun <- FALSE
-
-
-# Select which stages of the workflow to run
-
-run_simulation <- TRUE
-run_queries <- TRUE
-run_visualisations <- TRUE
-
-
-################################ File paths #####################################
-
-# File path to pre-simulated networks if not doing a full re-run
-
-datasets_path <- here::here(
-  "Data",
-  "datasets_final"
-)
-
-# File path to where results db will be stored
-
-database_path <- here::here(
-  "Results",
-  "spotlight_probability_results.duckdb"
-)
-
-# If FALSE, simulation will not run if it detects pre-exisitng db
-
-overwrite_database <- FALSE
-
+source(here::here("Config", "Config.R"))
 
 ######################## Obtain ground-truth networks ############################
 
-if (full_rerun) {
+# Remove any existing dataset var in case sim has been partially run before
+if (exists("datasets", inherits = FALSE)) {
+  rm(datasets)
+}
+
+if (config$workflow$full_rerun) {
   
   message("Regenerating ground-truth networks...")
   
@@ -72,15 +39,15 @@ if (full_rerun) {
   
   message("Loading supplied ground-truth networks...")
   
-  if (!file.exists(datasets_path)) {
+  if (!file.exists(config$paths$datasets)) {
     stop(
       "Ground-truth datasets file not found: ",
-      datasets_path
+      config$paths$datasets
     )
   }
   
   datasets <- readRDS(
-    datasets_path
+    config$paths$datasets
   )
 }
 
@@ -98,7 +65,7 @@ message("Ground-truth networks ready.")
 
 ############################ Run simulation #####################################
 
-if (run_simulation) {
+if (config$workflow$run_spotlight_simulation) {
   
   message("Starting spotlight simulation...")
   
@@ -115,12 +82,12 @@ if (run_simulation) {
 
 ############################ Run database queries ###############################
 
-if (run_queries) {
+if (config$workflow$run_queries) {
   
-  if (!file.exists(database_path)) {
+  if (!file.exists(config$paths$database)) {
     stop(
       "Results database not found: ",
-      database_path,
+      config$paths$database,
       "\nRun the simulation first or supply an existing database."
     )
   }
@@ -140,9 +107,9 @@ if (run_queries) {
 
 ############################ Create visualisations ##############################
 
-if (run_visualisations) {
+if (config$workflow$run_visualisations) {
   
-  if (!run_queries) {
+  if (!config$workflow$run_queries) {
     stop(
       "Visualisations currently require Queries.R to be run in the same session."
     )

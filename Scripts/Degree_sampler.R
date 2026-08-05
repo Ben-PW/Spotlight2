@@ -1,5 +1,9 @@
-
-
+################################################################################
+# Script: Degree_sampler.R
+#
+# This script contains the functions required to generate the baseline degree
+# sequences which are then passed into the ERGM simulator
+################################################################################
 
 ############# Function to calculate Freeman centrality from deg seq
 
@@ -232,7 +236,7 @@ sampleDegSeq <- function(
     freeman_centralisation,
     tolerance = 0.05,
     min_degree = 1L,
-    max_steps = 500000,
+    max_steps = config$data_simulation$sampler_steps,
     max_start_tries = 10000,
     move_probs = c(
       move1 = 0.40,

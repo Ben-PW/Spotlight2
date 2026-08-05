@@ -1,31 +1,25 @@
 ################################################################################
-# Script: config.R
+# Script: Config.R
 #
-# Purpose:
-#   Store the user-adjustable settings for the ground-truth network generation
-#   and spotlight observation simulation. The default values reproduce the
-#   settings currently used in the analysis scripts.
+# Stores the user-adjustable settings for the ground-truth network generation
+# and spotlight observation simulation. The default values reproduce the
+# settings currently used in the analysis scripts.
 #
-# Usage:
-#   Source this file near the beginning of main.R:
-#
-#     source(here::here("config.R"))
-#
-#   The settings can then be accessed using, for example:
-#
-#     config$data_simulation$sizes
-#     config$spotlight_simulation$alphas
 ################################################################################
 
 config <- list(
   
-  ##############################################################################
-  # Workflow controls
+  ############################## Workflow controls ##############################
+  
+  # Alter values here to control which broad stages of the simulation are
+  # carried out
+  
   ##############################################################################
   
   workflow = list(
     
     # TRUE: regenerate the ground-truth networks using Data_simulation.R.
+    #       (this will take several hours)
     # FALSE: load the supplied pre-generated datasets file.
     full_rerun = FALSE,
     
@@ -36,8 +30,16 @@ config <- list(
   ),
   
   
-  ##############################################################################
-  # File paths and output handling
+  ####################### File paths and output handling ########################
+  
+  # Probably don't change these
+  
+  # File paths for reading data and writing output
+  # Alter values here to modify file paths if required
+  
+  # Other output handling features are not yet implemented 05/08/26, 
+  # but if time permits will allow the saving of post-spotlight networks
+  
   ##############################################################################
   
   paths = list(
@@ -68,21 +70,32 @@ config <- list(
     
     # FALSE prevents accidental deletion of an existing results database.
     # Set to TRUE only when intentionally replacing an earlier simulation run.
-    overwrite_database = FALSE,
+    overwrite_database = FALSE
     
     # Save newly generated ground-truth networks after a full rerun.
-    save_regenerated_datasets = FALSE,
+    # (not yet implemented)
+    # save_regenerated_datasets = FALSE,
     
-    # Used only when save_regenerated_datasets is TRUE.
-    regenerated_datasets_path = here::here(
-      "Data",
-      "datasets_regenerated"
-    )
+    # Used only when save_regenerated_datasets is TRUE 
+    # (not yet implemented)
+    # regenerated_datasets_path = here::here(
+    #  "Data",
+    #  "datasets_regenerated"
+    #)
   ),
   
   
-  ##############################################################################
-  # Ground-truth data simulation
+  ###################### Basis network simulation parameters ######################
+
+  # Alter values here to alter the characteristics of the simulated networks
+  
+  # NOTE:I have not implemented a robust validation step for these parameters
+  # If impossible parameters are specified, look out for error messages like
+  
+  # "total_degree incompatible with size and min_degree."
+  # "Could not construct initial graphical degree sequence."
+  # "Could not find initial sequence inside target bands."
+
   ##############################################################################
   
   data_simulation = list(
@@ -105,27 +118,36 @@ config <- list(
     # condition.
     nsim = 500L,
     
+    # Number of steps the sampler should take wehn generating degree sequences
+    sampler_steps = 500000L,
+    
     # Arguments passed to makeNetworkBasis().
     centralisation_tolerance = 0.05,
-    min_degree = 1L,
-    cut_breaks = 4L,
+    min_degree = 1L, # Minimum node degree
+    cut_breaks = 4L, # number of sections to cut final sample into (higher number tries to force more variation)
     slice_n = 3L,
     degree_sampling_verbose = FALSE,
     
     # Controls messages produced while simulating networks from each basis.
     network_simulation_verbose = TRUE,
+    network_simulation_seed = NULL,
     
     # Seed used when selecting the final valid networks.
     network_sampling_seed = 123L,
     
     # Number of validated ground-truth networks retained per structural
-    # condition.
+    # condition (if possible).
     target_networks_per_condition = 100L
   ),
   
   
-  ##############################################################################
-  # Spotlight observation simulation
+  ######################## Spotlight effect simulation #########################
+  
+  # Spotlight observation simulation parameters
+  
+  # Change values here to alter the parameters of the actual spotlight 
+  # process
+  
   ##############################################################################
   
   spotlight_simulation = list(
@@ -161,9 +183,10 @@ config <- list(
     # DuckDB.
     flush = 50L,
     
-    # Proportion of networks retained from each dataset condition.
-    # Keep at 1 for the full simulation. Smaller values are useful for testing.
-    network_sample_fraction = 1
+    # Proportion of networks retained from each dataset condition
+    # (not yet implemented, but will allow controlling the retention of 
+    # observed netwroks)
+    # network_sample_fraction = 1
   )
 )
 
@@ -191,6 +214,6 @@ stopifnot(
   all(config$spotlight_simulation$p_obs_nonspotlit_values >= 0),
   all(config$spotlight_simulation$p_obs_nonspotlit_values <= 1),
   config$spotlight_simulation$flush > 0,
-  config$spotlight_simulation$network_sample_fraction > 0,
-  config$spotlight_simulation$network_sample_fraction <= 1
+  # config$spotlight_simulation$network_sample_fraction > 0,
+  # config$spotlight_simulation$network_sample_fraction <= 1
 )

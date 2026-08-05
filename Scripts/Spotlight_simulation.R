@@ -1,7 +1,8 @@
 ##################################################################################################
-#
-# Main spotlight probability simulation
-#
+# Script: Spotlight_simulation.R
+# 
+# This script performs the main spotlight simulation, perturbing networks and 
+# storing the results in the local database
 ##################################################################################################
 
 
@@ -16,13 +17,13 @@ if (!dir.exists(here::here("Results"))) {
   )
 }
 
-# Specify db path using variables defined in Spotlight_main.R
+# Specify db path using variables defined in Config.R
 
-db_path <- database_path
+db_path <- config$paths$database
 
 if (file.exists(db_path)) {
   
-  if (overwrite_database) {
+  if (config$output$overwrite_database) {
     
     file.remove(db_path)
     
@@ -74,7 +75,6 @@ source(here::here("Scripts", "Error_simulation_helpers.R"))
 # IMPORTANT: code to do this is in Data_simulation.R, as that is where it 
 # would be run normally
 
-set.seed(123)
 
 # Subsample for testing
 
@@ -101,7 +101,7 @@ set.seed(123)
 datasets <- datasets |>
   purrr::map(function(basis_out) {
     purrr::map(basis_out$networks, function(g) {
-      if (inherits(g, "igraph")) {
+      if (inherits(g, "igraph")) { # input data may be network objects in future
         g
       } else {
         intergraph::asIgraph(g)
@@ -142,7 +142,7 @@ datasets <- lapply(
 
 ############################ Compute ground-truth metrics ###################################
 
-graphGT <- graphGT <- purrr::map_dfr(datasets, computeMetrics) |>
+graphGT <- purrr::map_dfr(datasets, computeMetrics) |>
   dplyr::select(
     -realised_missingness,
     -realised_obs_rate_overall,
@@ -188,37 +188,17 @@ source(here::here("Scripts", "Spotlight_helpers.R"))
 
 #################################### Simulation parameters ###################################
 
-spotlight_pcts <- c(
-  0.01,
-  0.05,
-  0.10
-)
+# Spotlight percentages
+spotlight_pcts <- config$spotlight_simulation$spotlight_pcts
 
-alphas <- c(
-  0,
-  1,
-  2,
-  4,
-  8
-)
+# Degree bias
+alphas <- config$spotlight_simulation$alphas
 
-# Full observation-probability grid
-p_obs_spotlit_values <- c(
-  0.2,
-  0.4,
-  0.6,
-  0.8,
-  1.0
-)
+# Spotlit observation probability
+p_obs_spotlit_values <- config$spotlight_simulation$p_obs_spotlit_values
 
-p_obs_nonspotlit_values <- c(
-  0.2,
-  0.4,
-  0.6,
-  0.8,
-  1.0
-)
-
+# Non-spotlit observation probability
+p_obs_nonspotlit_values <- config$spotlight_simulation$p_obs_nonspotlit_values
 
 ############################ Display simulation size ########################################
 
@@ -244,8 +224,7 @@ message(
 message(
   "Total graph-condition applications: ",
   n_conditions_per_dataset *
-    length(datasets) *
-    length(datasets[[1]])
+    sum(lengths(datasets))
 )
 
 
@@ -254,10 +233,10 @@ message(
 global_rows <- list()
 node_rows <- list()
 
-kg <- 1L
+kg <- 1L 
 kn <- 1L
 
-flush <- 50L
+flush <- config$spotlight_simulation$flush
 
 network_batch_id <- 1L
 node_batch_id <- 1L
@@ -271,7 +250,7 @@ ds_names <- names(datasets)
 ds_total <- length(ds_names)
 ds_counter <- 0L
 
-set.seed(123)
+set.seed(config$spotlight_simulation$seed)
 
 
 #################################### Main simulation loop #####################################
@@ -326,7 +305,6 @@ tryCatch(
                     p_obs_nonspotlit = p_nonspot
                   )
                   
-                  
                   ################ Calculate network-level metrics #################
                   
                   global_rows[[kg]] <- computeMetrics(obs_list)
@@ -359,12 +337,10 @@ tryCatch(
                     gc(FALSE)
                   }
                   
-                  
                   ################ Calculate node-level metrics ####################
                   
                   node_rows[[kn]] <- computeCentralityDf(obs_list)
                   kn <- kn + 1L
-                  
                   
                   ################ Flush node metrics to DuckDB #####################
                   
@@ -540,16 +516,6 @@ rm(
     ls()
   )
 )
-
-if (
-  exists("con") &&
-  DBI::dbIsValid(con)
-) {
-  DBI::dbDisconnect(
-    con,
-    shutdown = TRUE
-  )
-}
 
 print("Probability simulation completed and environment cleaned")
 

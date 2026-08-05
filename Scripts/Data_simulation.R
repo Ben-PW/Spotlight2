@@ -1,7 +1,11 @@
 #####################################################################################################
-
-#Data preprocessing script. Candidate networks for error simulation created here
-
+# Script: Data_simulation.R
+#
+# This script runs the degree sequence sampler and passes the result into the 
+# ERGM simulator. It then filters the resultant networks to ensure they conform
+# to the prespecified parameter ranges (potential rounding error in the sampler
+# was leading to invalud output)
+#
 #####################################################################################################
 
 # requires
@@ -14,24 +18,34 @@ source(here::here("Scripts", "ERGM_simulator.R"))
 ############# Create parameter grid ############
 
 basis_grid <- tidyr::expand_grid(
-  size = c(30, 60, 120),
-  average_degree = c(3, 6),
-  freeman_centralisation = c(0.1, 0.3, 0.5)
+  size = config$data_simulation$sizes,
+  average_degree = config$data_simulation$average_degrees,
+  freeman_centralisation = config$data_simulation$freeman_centralisations
 ) |>
   dplyr::mutate(
-    average_degree_tolerance = calc_ad_tol(size), # allows 0.01 density variation
+    average_degree_tolerance = calc_ad_tol(size = size, 
+                                           density_tol = config$data_simulation$density_tolerance),
     name = purrr::pmap_chr(
       list(size, average_degree, freeman_centralisation),
       make_basis_name
     ),
-    seed = 123 + dplyr::row_number()
+    seed = config$data_simulation$basis_seed
+    + dplyr::row_number()
   )
 
+############# Create a lookup table to check simulated networks ############
+
+target_lookup <- basis_grid |>
+  dplyr::transmute(
+    dataset = name,
+    target_average_degree = average_degree,
+    target_centralisation = freeman_centralisation
+  )
 
 ############### Sample degree sequences ##########
 
-# If below is taking ages, change the max steps argument in the degree sampler
-# file, currently set to 500,000
+# If below is taking ages, change the max steps argument in the Degree_sampler.R
+# file, currently set to 500,000 (added to the config file)
 
 basis_list <- basis_grid |>
   dplyr::mutate(
@@ -54,17 +68,17 @@ basis_list <- basis_grid |>
         message("Sampling degseq for ", name, "...")
         
         out <- makeNetworkBasis(
-          nsim = 500,
+          nsim = config$data_simulation$nsim,
           size = size,
           average_degree = average_degree,
           average_degree_tolerance = average_degree_tolerance,
           freeman_centralisation = freeman_centralisation,
-          tolerance = 0.05,
-          min_degree = 1,
-          seed = seed,
-          verbose = FALSE,
-          cut_breaks = 4,
-          slice_n = 3
+          tolerance = config$data_simulation$centralisation_tolerance,
+          min_degree = config$data_simulation$min_degree,
+          seed = seed, 
+          verbose = config$data_simulation$degree_sampling_verbose,
+          cut_breaks = config$data_simulation$cut_breaks,
+          slice_n = config$data_simulation$slice_n
         )
         
         message("Finished ", name)
@@ -79,12 +93,21 @@ basis_list <- basis_grid |>
 
 ################## Simulate from degree sequences ##########
 
+if (!is.null(
+  config$data_simulation$network_simulation_seed
+)) {
+  set.seed(
+    config$data_simulation$network_simulation_seed
+  )
+}
+
 datasets <- purrr::imap(
   basis_list,
   function(basis, name) {
     message("Simulating networks from basis ", name, "...")
     
-    out <- simulateFromBasis(basis, verbose = TRUE)
+    out <- simulateFromBasis(basis, 
+                             verbose = config$data_simulation$network_simulation_verbose)
     
     message("Completed simulation for basis ", name)
     
@@ -107,7 +130,9 @@ datasets <- purrr::imap(
 # fit the criteria, this was likely due to rounding in the degree sequence generator
 # average degree is fine, sometimes centralisation slipped
 
-set.seed(123)
+set.seed(
+  config$data_simulation$network_sampling_seed
+)
 
 dataset_check <- purrr::imap_dfr(
   datasets,
@@ -123,52 +148,61 @@ dataset_check <- purrr::imap_dfr(
           intergraph::asIgraph(g)
         }
         
-        deg <- igraph::degree(ig, mode = "all")
+        deg <- igraph::degree(
+          ig,
+          mode = "all"
+        )
         
         tibble::tibble(
           dataset = dataset_name,
-          replicate_id = as.integer(replicate_id),
           
-          network_size = igraph::vcount(ig),
-          realised_average_degree = mean(deg),
+          replicate_id =
+            as.integer(replicate_id),
           
-          realised_centralisation = igraph::centr_degree(
-            ig,
-            mode = "all",
-            normalized = TRUE
-          )$centralization
+          network_size =
+            igraph::vcount(ig),
+          
+          realised_average_degree =
+            mean(deg),
+          
+          realised_centralisation =
+            igraph::centr_degree(
+              ig,
+              mode = "all",
+              normalized = TRUE
+            )$centralization
         )
       }
     )
   }
 ) |>
+  dplyr::left_join(
+    target_lookup,
+    by = "dataset"
+  ) |>
   dplyr::mutate(
-    
-    target_centralisation = dplyr::case_when(
-      stringr::str_detect(dataset, "_c1$") ~ 0.1,
-      stringr::str_detect(dataset, "_c3$") ~ 0.3,
-      stringr::str_detect(dataset, "_c5$") ~ 0.5,
-      TRUE ~ NA_real_
-    ),
-    
-    target_average_degree = as.numeric(
-      stringr::str_match(dataset, "_ad([0-9]+)_")[, 2]
-    ),
-    
-    centralisation_tolerance = 0.05,
+    centralisation_tolerance =
+      config$data_simulation$centralisation_tolerance,
     
     average_degree_tolerance = calc_ad_tol(
       size = network_size,
-      density_tol = 0.01
+      density_tol =
+        config$data_simulation$density_tolerance
     ),
     
     inside_centralisation_band =
       !is.na(target_centralisation) &
-      abs(realised_centralisation - target_centralisation) <= centralisation_tolerance,
+      abs(
+        realised_centralisation -
+          target_centralisation
+      ) <= centralisation_tolerance,
     
     inside_average_degree_band =
       !is.na(target_average_degree) &
-      abs(realised_average_degree - target_average_degree) <= average_degree_tolerance,
+      abs(
+        realised_average_degree -
+          target_average_degree
+      ) <= average_degree_tolerance,
     
     inside_target_band =
       inside_centralisation_band &
@@ -193,7 +227,7 @@ datasets <- purrr::imap(
     
     basis_out$networks <- sampleDatasets(
       networks = valid_networks,
-      target_n = 100
+      target_n = config$data_simulation$target_networks_per_condition
     )
     
     basis_out
