@@ -118,11 +118,13 @@ computeMetrics <- function(graph_list) {
   
   purrr::map_dfr(graph_list, function(g) {
     
+    # Extract structure of input network
     comp <- igraph::components(g)
     component_sizes <- comp$csize
     n_nodes <- igraph::vcount(g)
     node_degrees <- igraph::degree(g, mode = "all")
     
+    # Attach simulation conditions
     tibble::tibble(
       dataset = graphAttrOrNA(g, "dataset", NA_character_),
       replicate_id = graphAttrOrNA(g, "replicate_id", NA_integer_),
@@ -217,7 +219,7 @@ computeMetrics <- function(graph_list) {
       
       size = n_nodes,
       
-      APL <- igraph::mean_distance(
+      APL = igraph::mean_distance(
         g,
         directed = FALSE,
         unconnected = TRUE

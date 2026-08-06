@@ -160,12 +160,14 @@ simulateFromBasis <- function(basis, target_total = 200, verbose = FALSE) {
   
   simulateNetworks(
     basis$networks,
-    nmAtt = 1,
-    gwdeg = 1,
-    gwesp = 0.4,
-    gwdsp = -0.025,
+    nfAtt = config$data_simulation$nfAtt,
+    nmAtt = config$data_simulation$nmAtt,
+    gwdeg = config$data_simulation$gwdeg,
+    gwesp = config$data_simulation$gwesp,
+    gwdsp = config$data_simulation$gwdsp,
+    require_connected = config$data_simulation$require_connected,
     target_connected = tgt,
-    max_attempts = 500,
+    max_attempts = config$data_simulation$ergm_max_attempts_per_degree_sequence,
     verbose = verbose
   )
 }

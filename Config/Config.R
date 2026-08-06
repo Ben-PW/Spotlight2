@@ -115,12 +115,14 @@ config <- list(
   
   data_simulation = list(
     
+    ################## Degree sequence generation parameters #####################
+    
     # Structural conditions used to create the network parameter grid.
     sizes = c(30L, 60L, 120L),
     average_degrees = c(3, 6),
     freeman_centralisations = c(0.1, 0.3, 0.5),
     
-    # Permitted density deviation. This is converted to an average-degree
+    # Permitted realised density deviation. This is converted to an average-degree
     # tolerance by calc_ad_tol().
     density_tolerance = 0.01,
     
@@ -134,22 +136,58 @@ config <- list(
     # Number of steps the sampler should take wehn generating degree sequences
     sampler_steps = 500000L,
     
-    # Arguments passed to makeNetworkBasis().
+    ############## Arguments passed to makeNetworkBasis(). ##################
+    
+    # Centralisation tolerance
     centralisation_tolerance = 0.05,
-    min_degree = 1L, # Minimum node degree
-    cut_breaks = 4L, # number of sections to cut final sample into (higher number tries to force more variation)
+    
+    # Minimum node degree
+    min_degree = 1L, 
+    
+    # Number of bins used to group degree sequences by average degree,
+    # centralisation, degree IQR, and maximum degree.
+    # Higher values create more bins, attempting to ensure more variation
+    cut_breaks = 4L, 
+    
+    # Number of degree sequences sampled from each occupied bin combination.
+    # Higher values retain more bases from each bin for ERGM simulation.
     slice_n = 3L,
+    
+    # Set to true for degree generation logs
     degree_sampling_verbose = FALSE,
+    
+    ####################### ERGM simulation parameters #########################
+    
+    # Coefficients for ERGM parameters
+    nfAtt = 0, # nodefactor of attribute
+    nmAtt = 1, # nodematch by attribute
+    gwdeg = 1, # geometrically weighted degree (degree dispersion)
+    gwesp = 0.4, # geometrically weighted edgewise shared partners
+    gwdsp = -0.025, # geometrically weighted dyadwise shared partners
     
     # Controls messages produced while simulating networks from each basis.
     network_simulation_verbose = TRUE,
-    network_simulation_seed = NULL,
+    network_simulation_seed = 456L,
     
     # Seed used when selecting the final valid networks.
     network_sampling_seed = 123L,
     
-    # Number of validated ground-truth networks retained per structural
-    # condition (if possible).
+    # Determine whether networks must be 1 component or not
+    require_connected = TRUE,
+    
+    # Approximate number of ERGM candidate networks generated for each
+    # size × average-degree × centralisation condition, before validation.
+    # Incrcease if few valid networks are retrieved
+    ergm_candidate_networks_per_condition = 200L,
+    
+    # Maximum ERGM attempts to produce a 1 component network allowed for each 
+    # selected degree sequence.
+    # Increase is success rate is low
+    # If require_connected = FALSE, this argument is superfluous 
+    ergm_max_attempts_per_degree_sequence = 500L,
+    
+    # Number of validated networks retained for each structural condition
+    # (currently 100 networks per density * centralisation * size case)
     target_networks_per_condition = 100L
   ),
   
@@ -194,7 +232,7 @@ config <- list(
     
     # Number of graph-condition results accumulated before writing a batch to
     # DuckDB.
-    flush = 50L,
+    flush = 50L
     
     # Proportion of networks retained from each dataset condition
     # (not yet implemented, but will allow controlling the retention of 
@@ -206,19 +244,33 @@ config <- list(
 
 ################################################################################
 # Basic configuration checks
+# Not exhaustive
 ################################################################################
 
 stopifnot(
+  
+  # Workflow
   is.logical(config$workflow$full_rerun),
   length(config$workflow$full_rerun) == 1L,
   
+  # Degree generation
   all(config$data_simulation$sizes > 0),
   all(config$data_simulation$average_degrees > 0),
   all(config$data_simulation$freeman_centralisations >= 0),
   all(config$data_simulation$freeman_centralisations <= 1),
+  
+  # ERGM simulation
   config$data_simulation$nsim > 0,
   config$data_simulation$target_networks_per_condition > 0,
+  config$data_simulation$cut_breaks > 0,
+  config$data_simulation$slice_n > 0,
+  config$data_simulation$sampler_steps > 0,
+  config$data_simulation$ergm_candidate_networks_per_condition > 0,
+  config$data_simulation$ergm_max_attempts_per_degree_sequence > 0,
+  is.numeric(config$data_simulation$network_simulation_seed),
+  length(config$data_simulation$network_simulation_seed) == 1L,
   
+  # Spotlight simulation
   all(config$spotlight_simulation$spotlight_pcts > 0),
   all(config$spotlight_simulation$spotlight_pcts <= 1),
   all(config$spotlight_simulation$alphas >= 0),

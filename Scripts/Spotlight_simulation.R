@@ -392,10 +392,7 @@ tryCatch(
                       msg,
                       sep = " | "
                     ),
-                    file = here::here(
-                      "Results",
-                      "probability_simulation_error_log.txt"
-                    ),
+                    file = config$paths$error_log,
                     append = TRUE
                   )
                   

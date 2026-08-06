@@ -1,8 +1,18 @@
 ################################################################################
-# Script: Degree_sampler.R
+# Script: Degree_generator.R
 #
 # This script contains the functions required to generate the baseline degree
 # sequences which are then passed into the ERGM simulator
+#
+# NB: This is not true sampling - it's a constrained random walk procedure with
+#     a fixed set of possible steps. Test showed it produced adequate variation
+#     across the specified ranges used for this study, however this might not 
+#     hold for larger networks or different configurations. For larger networks
+#     recommend increasing config$data_simulation$sampler_steps.
+#
+#     Setting config$data_simulation$degree_sampling_verbose <- TRUE can also
+#     give an indication of whether the generator is still finding many unique 
+#     sequences or if it appears to stalled.
 ################################################################################
 
 ############# Function to calculate Freeman centrality from deg seq
@@ -85,7 +95,7 @@ construct_initial_degseq <- function(size,
 }
 
 
-############################ Proposal moves for random walk
+############################ Proposal moves for constrained random walk
 # These are mixed as increments of 1 did not lead to much variation
 
 # This move just swaps an increment of 1 degree between two slots on the sequence
@@ -224,7 +234,7 @@ propose_degseq_move_mixed <- function(deg,
 
 ################################################################################
 
-# Main sampler
+# Main function
 
 ################################################################################
 

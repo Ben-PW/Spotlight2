@@ -10,7 +10,7 @@
 
 # requires
 source(here::here("Scripts", "Data_simulation_helpers.R"))
-source(here::here("Scripts", "Degree_sampler.R"))
+source(here::here("Scripts", "Degree_generator.R"))
 source(here::here("Scripts", "ERGM_simulator.R"))
 
 ############################## Generate degree sequences #############################
@@ -107,6 +107,7 @@ datasets <- purrr::imap(
     message("Simulating networks from basis ", name, "...")
     
     out <- simulateFromBasis(basis, 
+                             target_total = config$data_simulation$ergm_candidate_networks_per_condition,
                              verbose = config$data_simulation$network_simulation_verbose)
     
     message("Completed simulation for basis ", name)
