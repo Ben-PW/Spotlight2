@@ -1,13 +1,9 @@
 #################################################################################################
-
-# Spotlight functions are contained in this script. They are divided into two
-# stages - the assignment of the spotlight, and the conditional sampling of
-# edges given spotlight status and non-spotlit tie weight. Spotlit ties are
-# currently given a base weight of 1, with non spotlit tie weights defined 
-# manually. Ties are then sampled to be removed from the network conditionally
-# on tie weight and specified missingness level. This should not be difficult to
-# alter, however, if another method seems superior, as long as the underlying 
-# method remains edge sampling
+# Script: Spotlight_helpers.R
+#
+# This script contains the functions required for the actual spotlight process
+# assignSpotlight: Determines which nodes are spotlit 
+# observeSpotlight: Samples ties accordingly
 
 ####################################################################################
 
@@ -62,6 +58,14 @@ observeSpotlight <- function(
     p_obs_spotlit = p_obs_spotlit,
     p_obs_nonspotlit = p_obs_nonspotlit
   )
+  
+  if (
+    anyNA(probability_args) ||
+    any(!is.finite(probability_args)) ||
+    any(probability_args < 0 | probability_args > 1)
+  ) {
+    stop("Observation probabilities must be finite values between 0 and 1.")
+  }
 
   
   lapply(graph_list, function(g) {

@@ -104,8 +104,9 @@ config <- list(
 
   # Alter values here to alter the characteristics of the simulated networks
   
-  # NOTE:I have not implemented a robust validation step for these parameters
-  # If impossible parameters are specified, look out for error messages like
+  # NOTE:I have not implemented a robust validation step for some of these 
+  # parameters If impossible parameters are specified, look out for error 
+  # messages like:
   
   # "total_degree incompatible with size and min_degree."
   # "Could not construct initial graphical degree sequence."
