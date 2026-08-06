@@ -7,6 +7,7 @@
 #
 # Workflow controls:
 #   determine which simulation stages are run
+#   (data simulation | spotlight simulation | database queries | visualisations)
 #
 # File paths and output handling:
 #   controls paths for dataset loading, writing results to db, 
@@ -17,6 +18,7 @@
 #
 # Spotlight simulation:
 #   controls the parameters of the simulated spotlight process
+#
 ################################################################################
 
 config <- list(
@@ -82,6 +84,7 @@ config <- list(
     
     # FALSE prevents accidental deletion of an existing results database.
     # Set to TRUE only when intentionally replacing an earlier simulation run.
+    # Simulation will not run if it detects an existing db
     overwrite_database = FALSE
     
     # Save newly generated ground-truth networks after a full rerun.
@@ -122,8 +125,6 @@ config <- list(
     density_tolerance = 0.01,
     
     # Starting seed used to create one deterministic seed per parameter-grid row.
-    # Data_simulation.R can use:
-    #   seed = config$data_simulation$basis_seed + dplyr::row_number()
     basis_seed = 123L,
     
     # Number of candidate degree sequences requested for each structural

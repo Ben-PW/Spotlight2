@@ -217,16 +217,11 @@ computeMetrics <- function(graph_list) {
       
       size = n_nodes,
       
-      APL = {
-        dist_mat <- igraph::distances(g, mode = "all")
-        finite_distances <- dist_mat[is.finite(dist_mat)]
-        
-        if (length(finite_distances) == 0L) {
-          NA_real_
-        } else {
-          mean(finite_distances)
-        }
-      },
+      APL <- igraph::mean_distance(
+        g,
+        directed = FALSE,
+        unconnected = TRUE
+      ),
       
       components = comp$no,
       
