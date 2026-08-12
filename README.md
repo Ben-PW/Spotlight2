@@ -7,8 +7,8 @@ pipeline used for:
 > [Benjamin Palfreeman-Watt, David Buil-Gil, Tomas Diviak, Nicholas Trajtenberg-Pareja]  
 
 The primary purpose of the repository is to support reproduction of the
-simulation results and figures reported in the paper. The configuration file
-also exposes the main simulation parameters for users who wish to explore
+simulation results and figures reported in the paper. However, the configuration file
+also allows the manual specification of a variety of simulation parameters for users who wish to explore
 alternative conditions.
 
 ## Overview
@@ -130,4 +130,22 @@ renv::restore()
 ```R
 source(Spotlight_main.R)
 ```
-It's important to run the script from the project root to the paths created by the ```here``` package resolve properly
+It's important to run ```Spotlight_main.R``` from the project root so the paths created by the ```here``` package resolve properly (i.e. don't move it)
+
+## Replicating results
+This is the simplest route to replicate the results of the study. Default parameters are set to perform this workflow unless manually configured otherwise.
+In ```Config/config.R``` check that the workflow parameters read as follows
+```R
+workflow = list(
+  full_rerun = FALSE,
+  run_spotlight_simulation = TRUE,
+  run_database_formatting = TRUE,
+  run_queries = TRUE,
+  run_visualisations = TRUE
+)
+```
+Then run
+```R
+source("Spotlight_main.R")
+```
+Please allow 4-6 hours and up to 2GB memory useage.  
