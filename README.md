@@ -76,3 +76,44 @@ Spotlight2/
 │       └── Top10_recall_contour.R
 └── Figures/
 ```
+The key files are:
+
+```Spotlight_main.R```: Script co-ordinating the main workflow.  
+```Config/config.R```: Script containing user definable variables.  
+```Data/Datasets_final```: Supplied datasets used for the spotlight study.  
+```Data/Datasets_final_conditions.csv```: Simulation condition metadata required for database queries. Generated automatically by data simulation stage.  
+```Scripts/Database_queries.R```: Queries the database to pull required data into RAM.  
+```Scripts/Visualisations.R```: Coordinates the visualisation scripts and saves output to ```Figures/```.  
+
+## Software requirements
+This analysis was performed using:  
+R[4.5.2]  
+RStudio[2025.9.2.418]  
+Microsoft Windows 11 Enterprise [10.0.26100 Build 26100]  
+
+This pipeline requires the following packages:  
+```R
+simulation_packages <- c(
+  "akima",
+  "DBI",
+  "dbplyr",
+  "dplyr",
+  "duckdb",
+  "ergm",
+  "ggplot2",
+  "here",
+  "igraph",
+  "intergraph",
+  "network",
+  "purrr",
+  "scales",
+  "sna",
+  "stringr",
+  "tibble",
+  "tidyr"
+)
+
+install.packages(simulation_packages)
+```
+
+
