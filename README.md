@@ -44,6 +44,7 @@ Database formatting and analysis queries
 Figures
 ```
 ## Repository Structure
+Note that the results database 'spotlight_probability_results.db' is not present in this repository, as the file is approximately 16GB (if the simulation is run with default parameters on the provided data). However, this file can be fully reconstructed with the provided code.
 ```text
 Spotlight2/
 ├── Spotlight_main.R
@@ -66,6 +67,12 @@ Spotlight2/
 │   ├── Database_queries.R
 │   ├── Visualisations.R
 │   ├── Visualisation_helpers.R
-│   ├── Vis_scripts/
+│   └── Vis_scripts/
+│       ├── Corr_nodes.R
+│       ├── Coverage_heatmap.R
+│       ├── Rank_lift_contour.R
+│       ├── Rank_lift_line.R
+│       ├── Rel_bias_contour.R
+│       └── Top10_recall_contour.R
 └── Figures/
 ```
