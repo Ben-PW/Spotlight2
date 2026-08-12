@@ -58,6 +58,9 @@ rsconnect/
 /Scripts/Old/
 /Scripts/Vis_scripts/Old/
 
+# Non simulation stuff
+Spotlight_diagram.R
+
 # Large generated files
 *.rds
 *.RDS
