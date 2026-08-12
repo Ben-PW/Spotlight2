@@ -115,5 +115,19 @@ simulation_packages <- c(
 
 install.packages(simulation_packages)
 ```
+To restore the exact package environment used for this simulation, use the following:
+```R
+install.packages("renv")
+renv::restore()
+```
 
-
+## Getting started
+1. Download or clone the repository
+2. Open ```Spotlight2.Rproj``` in RStudio
+3. Review the settings in ```Config/config.R``` (ignore if running default parameters)
+4. Start a fresh R session
+5. Run
+```R
+source(Spotlight_main.R)
+```
+It's important to run the script from the project root to the paths created by the ```here``` package resolve properly
