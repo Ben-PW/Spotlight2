@@ -48,7 +48,7 @@ config <- list(
 
     # Query the formatted database and create analysis data frames in R.
     # This can be FALSE if queried datasets are already in the environment
-    run_queries = FALSE,
+    run_queries = TRUE,
     
     # Visualise queried data
     run_visualisations = TRUE
@@ -223,15 +223,15 @@ config <- list(
     seed = 123L,
     
     # Proportion of nodes assigned to the spotlight.
-    spotlight_pcts = c(#0.01, 
-                       #0.05, 
+    spotlight_pcts = c(0.01, 
+                       0.05, 
                        0.10),
     
     # Strength of degree-biased spotlight assignment.
     alphas = c(0, 
-              # 1, 
+               1, 
                2, 
-             #  4, 
+               4, 
                8),
     
     # Observation-probability grid for ties incident on spotlit nodes.
@@ -264,6 +264,7 @@ config <- list(
   
   ########################### Analysis parameters ###############################
   
+  # Alter this variable to determine different values of Top N
   analysis = list(
     top_n_proportion = 0.10
   ),
@@ -319,11 +320,15 @@ config <- list(
     # Optional plot annotations.
     show_coverage_values = TRUE,
     show_top_n_alignment = TRUE,
+    
+    # Generate supplementary plots of all spotlight sampling percentages
+    # NB if many are selected this will take a while
+    supplementary_plots = TRUE,
 
     # Plot objects are always retained in `visualisation_plots`. These options
     # control PDF output.
-    save_plots = TRUE,
-    save_supplementary_coverage = TRUE
+    save_plots = TRUE
+    #save_supplementary_coverage = TRUE
   )
 )
 
@@ -408,8 +413,12 @@ stopifnot(
   length(config$visualisations$show_top_n_alignment) == 1L,
   is.logical(config$visualisations$save_plots),
   length(config$visualisations$save_plots) == 1L,
-  is.logical(config$visualisations$save_supplementary_coverage),
-  length(config$visualisations$save_supplementary_coverage) == 1L
+  is.logical(config$visualisations$save_plots),
+  length(config$visualisations$save_plots) == 1L,
+  is.logical(config$visualisations$supplementary_plots),
+  length(config$visualisations$supplementary_plots) == 1L
+  #is.logical(config$visualisations$save_supplementary_coverage),
+  #length(config$visualisations$save_supplementary_coverage) == 1L
   # config$spotlight_simulation$network_sample_fraction > 0,
   # config$spotlight_simulation$network_sample_fraction <= 1
 )

@@ -103,8 +103,8 @@ if ("coverage" %in% visualisation_config$plots_to_run) {
     df = get("coverage_heatmap_df", inherits = TRUE),
     main_spotlight_pct = visualisation_config$main_spotlight_pct,
     alphas_to_plot = visualisation_config$alphas_to_plot,
-    show_values = visualisation_config$show_coverage_values,
-    include_supplementary = TRUE
+    show_values = visualisation_config$show_coverage_values
+    #include_supplementary = TRUE
   )
 
   visualisation_plots <- append_visualisation_plots(
@@ -201,10 +201,11 @@ if ("rank_lift_contour" %in% visualisation_config$plots_to_run) {
     df = get("rank_lift_df2", inherits = TRUE),
     metrics_to_keep = visualisation_config$centrality_metrics,
     alphas_to_plot = visualisation_config$alphas_to_plot,
-    spotlight_pct_choice = visualisation_config$main_spotlight_pct,
+    spotlight_pct_choice =
+      visualisation_config$main_spotlight_pct,
     grid_n = visualisation_config$interpolation_grid_n
   )
-
+  
   visualisation_plots <- append_visualisation_plots(
     visualisation_plots,
     list(rank_lift_contour = rank_lift_contour_plot)
@@ -215,55 +216,31 @@ if ("rank_lift_contour" %in% visualisation_config$plots_to_run) {
 visualisation_plot_files <- character()
 
 if (visualisation_config$save_plots) {
+  
   figures_directory <- config$paths$figures
-  supplementary_directory <- file.path(
-    figures_directory,
-    "Figures_supplemental"
-  )
-
-  main_coverage_name <- paste0(
-    "coverage_",
-    make_spotlight_pct_slug(
-      visualisation_config$main_spotlight_pct
-    )
-  )
-
+  
   get_plot_dimensions <- function(plot_name) {
+    
     if (startsWith(plot_name, "coverage_")) {
       return(c(width = 180, height = 135))
     }
-
+    
     if (startsWith(plot_name, "node_correlation_")) {
       return(c(width = 180, height = 150))
     }
-
+    
     c(width = 240, height = 180)
   }
-
+  
   for (plot_name in names(visualisation_plots)) {
-    is_supplementary_coverage <-
-      startsWith(plot_name, "coverage_") &&
-      plot_name != main_coverage_name
-
-    if (
-      is_supplementary_coverage &&
-      !visualisation_config$save_supplementary_coverage
-    ) {
-      next
-    }
-
-    output_directory <- if (is_supplementary_coverage) {
-      supplementary_directory
-    } else {
-      figures_directory
-    }
-
+    
     dimensions <- get_plot_dimensions(plot_name)
+    
     output_filename <- file.path(
-      output_directory,
+      figures_directory,
       paste0(plot_name, ".pdf")
     )
-
+    
     visualisation_plot_files[[plot_name]] <-
       save_visualisation_pdf(
         plot = visualisation_plots[[plot_name]],

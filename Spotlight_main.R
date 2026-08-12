@@ -338,23 +338,107 @@ if (config$workflow$run_queries) {
 
 if (config$workflow$run_visualisations) {
   
-  # if (!config$workflow$run_queries) {
-  #   stop(
-  #     "Visualisations currently require Queries.R to be run in the same session."
-  #   )
-  # }
-  
-  message("Creating visualisations...")
-  
-  source(
-    here::here(
-      "Scripts",
-      "Visualisations.R"
+  # Runs the visualisation script on only the main spotlight pct
+  if (!config$visualisations$supplementary_plots) {
+    
+    source(
+      here::here(
+        "Scripts",
+        "Visualisations.R"
+      )
     )
-  )
-  
-  message("Visualisations completed.")
+    
+  } else {
+    
+    # Runs the visualisation script on all spotlight pcts
+    original_spotlight_pct <-
+      config$visualisations$main_spotlight_pct
+    
+    original_figures_path <-
+      config$paths$figures
+    
+    available_spotlight_pcts <- sort(
+      unique(
+        as.numeric(
+          as.character(coverage_heatmap_df$spotlight_pct)
+        )
+      )
+    )
+    
+    tryCatch(
+      expr = {
+        
+        for (spotlight_pct in available_spotlight_pcts) {
+          
+          config$visualisations$main_spotlight_pct <-
+            spotlight_pct
+          
+          is_main_spotlight_pct <- dplyr::near(
+            spotlight_pct,
+            original_spotlight_pct
+          )
+          
+          if (is_main_spotlight_pct) {
+            
+            config$paths$figures <-
+              original_figures_path
+            
+          } else {
+            
+            spotlight_directory <- paste0(
+              "spotlight_",
+              format(
+                spotlight_pct * 100,
+                trim = TRUE,
+                scientific = FALSE
+              ),
+              "pct"
+            )
+            
+            config$paths$figures <- file.path(
+              original_figures_path,
+              "Figures_supplemental",
+              spotlight_directory
+            )
+          }
+          
+          message(
+            "Creating visualisations for spotlight proportion ",
+            scales::percent(spotlight_pct, accuracy = 1),
+            "..."
+          )
+          
+          source(
+            here::here(
+              "Scripts",
+              "Visualisations.R"
+            )
+          )
+        }
+      },
+      
+      finally = {
+        config$visualisations$main_spotlight_pct <-
+          original_spotlight_pct
+        
+        config$paths$figures <-
+          original_figures_path
+      }
+    )
+  }
 }
+  
+#   message("Creating visualisations...")
+#   
+#   source(
+#     here::here(
+#       "Scripts",
+#       "Visualisations.R"
+#     )
+#   )
+#   
+#   message("Visualisations completed.")
+# }
 
 
 ################################ Completion #####################################

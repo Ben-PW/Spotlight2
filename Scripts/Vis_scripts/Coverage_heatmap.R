@@ -156,38 +156,32 @@ plot_coverage_heatmap <- function(
   plot
 }
 
-
+# Slightly oddly coded, used to have functionality to plot supplemental plots
+# within the function but that has been moved to main
 build_coverage_heatmaps <- function(
     df,
     main_spotlight_pct,
     alphas_to_plot = NULL,
-    show_values = TRUE,
-    include_supplementary = TRUE
+    show_values = TRUE
 ) {
   available_spotlight_pcts <- sort(
-    unique(df$spotlight_pct)
+    unique(as.numeric(as.character(df$spotlight_pct)))
   )
-
+  
   resolve_numeric_selection(
     requested_values = main_spotlight_pct,
     available_values = available_spotlight_pcts,
     setting_name = "config$visualisations$main_spotlight_pct"
   )
-
-  spotlight_pcts_to_plot <- if (include_supplementary) {
-    available_spotlight_pcts
-  } else {
-    main_spotlight_pct
-  }
-
+  
   prepared_df <- prepare_coverage_heatmap_df(
     df = df,
     alphas_to_plot = alphas_to_plot
   )
-
+  
   plots <- stats::setNames(
     lapply(
-      spotlight_pcts_to_plot,
+      main_spotlight_pct,
       function(spotlight_pct) {
         plot_coverage_heatmap(
           df = prepared_df,
@@ -199,13 +193,14 @@ build_coverage_heatmaps <- function(
     paste0(
       "coverage_",
       vapply(
-        spotlight_pcts_to_plot,
+        main_spotlight_pct,
         make_spotlight_pct_slug,
         character(1)
       )
     )
   )
-
-  attr(plots, "spotlight_pcts") <- spotlight_pcts_to_plot
+  
+  attr(plots, "spotlight_pcts") <- main_spotlight_pct
+  
   plots
 }

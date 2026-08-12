@@ -89,8 +89,9 @@ validate_visualisation_config <- function(vis_config) {
     "interpolation_grid_n",
     "show_coverage_values",
     "show_top_n_alignment",
-    "save_plots",
-    "save_supplementary_coverage"
+    "supplementary_plots",
+    "save_plots"
+    #"save_supplementary_coverage"
   )
 
   missing_settings <- setdiff(
@@ -192,8 +193,9 @@ validate_visualisation_config <- function(vis_config) {
   logical_settings <- c(
     "show_coverage_values",
     "show_top_n_alignment",
-    "save_plots",
-    "save_supplementary_coverage"
+    "supplementary_plots",
+    "save_plots"
+    #"save_supplementary_coverage"
   )
 
   invalid_logical_settings <- logical_settings[

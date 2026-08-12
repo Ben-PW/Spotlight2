@@ -5,6 +5,7 @@
 # contour plots
 ################################################################################
 
+# Primary plotting function
 build_rank_lift_contour_plot <- function(
     df,
     metrics_to_keep,
@@ -329,3 +330,57 @@ build_rank_lift_contour_plot <- function(
       plot.title = ggplot2::element_text(face = "bold")
     )
 }
+
+# # Wrapper to apply to list of spotlight percentages
+# 
+# build_rank_lift_contour_plots <- function(
+#     df,
+#     main_spotlight_pct,
+#     metrics_to_keep,
+#     alphas_to_plot = NULL,
+#     grid_n = 100L,
+#     include_supplementary = TRUE
+# ) {
+#   available_spotlight_pcts <- sort(
+#     unique(as.numeric(as.character(df$spotlight_pct)))
+#   )
+#   
+#   # Ensure the requested main value exists in the data.
+#   resolve_numeric_selection(
+#     requested_values = main_spotlight_pct,
+#     available_values = available_spotlight_pcts,
+#     setting_name = "config$visualisations$main_spotlight_pct"
+#   )
+#   
+#   spotlight_pcts_to_plot <- if (include_supplementary) {
+#     available_spotlight_pcts
+#   } else {
+#     main_spotlight_pct
+#   }
+#   
+#   plots <- purrr::map(
+#     spotlight_pcts_to_plot,
+#     function(spotlight_pct) {
+#       build_rank_lift_contour_plot(
+#         df = df,
+#         metrics_to_keep = metrics_to_keep,
+#         alphas_to_plot = alphas_to_plot,
+#         spotlight_pct_choice = spotlight_pct,
+#         grid_n = grid_n
+#       )
+#     }
+#   )
+#   
+#   names(plots) <- paste0(
+#     "rank_lift_contour_",
+#     vapply(
+#       spotlight_pcts_to_plot,
+#       make_spotlight_pct_slug,
+#       character(1)
+#     )
+#   )
+#   
+#   attr(plots, "spotlight_pcts") <- spotlight_pcts_to_plot
+#   
+#   plots
+# }
