@@ -7,7 +7,8 @@
 #
 # Workflow controls:
 #   determine which simulation stages are run
-#   (data simulation | spotlight simulation | database queries | visualisations)
+#   (data simulation | spotlight simulation | database formatting |
+#    database queries | visualisations)
 #
 # File paths and output handling:
 #   controls paths for dataset loading, writing results to db, 
@@ -37,16 +38,24 @@ config <- list(
     # FALSE: load the supplied pre-generated datasets file.
     full_rerun = FALSE,
     
-    # Select the downstream stages to run from main.R.
-    run_spotlight_simulation = TRUE,
-    run_queries = TRUE,
+    # Select the downstream stages to run from Spotlight_main.R.
+    # This can be FALSE if simulation has already run and written results to db
+    run_spotlight_simulation = FALSE,
+
+    # Format results database to facilitate querying
+    # This can be FALSE when querying an existing, already formatted database.
+    run_database_formatting = FALSE,
+
+    # Query the formatted database and create analysis data frames in R.
+    # This can be FALSE if queried datasets are already in the environment
+    run_queries = FALSE,
+    
+    # Visualise queried data
     run_visualisations = TRUE
   ),
   
   
   ####################### File paths and output handling ########################
-  
-  # Probably don't change these
   
   # File paths for reading data and writing output
   # Alter values here to modify file paths if required
@@ -62,6 +71,12 @@ config <- list(
     datasets = here::here(
       "Data",
       "datasets_final"
+    ),
+
+    # Metadata describing the conditions used to generate the supplied data.
+    dataset_conditions = here::here(
+      "Data",
+      "datasets_final_conditions.csv"
     ),
     
     # DuckDB results database created by Spotlight_main.R.
@@ -208,10 +223,16 @@ config <- list(
     seed = 123L,
     
     # Proportion of nodes assigned to the spotlight.
-    spotlight_pcts = c(0.01, 0.05, 0.10),
+    spotlight_pcts = c(#0.01, 
+                       #0.05, 
+                       0.10),
     
     # Strength of degree-biased spotlight assignment.
-    alphas = c(0, 1, 2, 4, 8),
+    alphas = c(0, 
+              # 1, 
+               2, 
+             #  4, 
+               8),
     
     # Observation-probability grid for ties incident on spotlit nodes.
     p_obs_spotlit_values = c(
@@ -239,6 +260,70 @@ config <- list(
     # (not yet implemented, but will allow controlling the retention of 
     # observed netwroks)
     # network_sample_fraction = 1
+  ),
+  
+  ########################### Analysis parameters ###############################
+  
+  analysis = list(
+    top_n_proportion = 0.10
+  ),
+
+  ######################## Visualisation parameters ###########################
+
+  visualisations = list(
+
+    # Plot families to create. Available values are:
+    # coverage | network_bias | node_correlation | top_n_recall |
+    # rank_lift_line | rank_lift_contour
+    plots_to_run = c(
+      "coverage",
+      "network_bias",
+      "node_correlation",
+      "top_n_recall",
+      "rank_lift_line",
+      "rank_lift_contour"
+    ),
+
+    # Spotlight proportion used by every main figure. Coverage heatmaps for
+    # other proportions can additionally be saved as supplementary figures.
+    main_spotlight_pct = 0.10,
+
+    # Alpha values shown in the figures. NULL uses every alpha available in
+    # the queried results database.
+    alphas_to_plot = NULL,
+
+    # Node-centrality metrics included in correlation, Top-N and rank-lift
+    # figures.
+    centrality_metrics = c(
+      "Degree",
+      "Betweenness",
+      "Closeness",
+      "Eigenvector"
+    ),
+
+    # Correlation figures to create: "rank", "pearson", or both.
+    correlation_types = "rank",
+
+    # Network metrics and bias definitions used for bias contours.
+    network_bias_metrics = c(
+      "dcent",
+      "clustering"
+    ),
+    
+    # Can select "absolute" for absolute relative bias plots
+    network_bias_types = "relative",
+
+    # Resolution of interpolated contour surfaces.
+    interpolation_grid_n = 100L,
+
+    # Optional plot annotations.
+    show_coverage_values = TRUE,
+    show_top_n_alignment = TRUE,
+
+    # Plot objects are always retained in `visualisation_plots`. These options
+    # control PDF output.
+    save_plots = TRUE,
+    save_supplementary_coverage = TRUE
   )
 )
 
@@ -253,6 +338,14 @@ stopifnot(
   # Workflow
   is.logical(config$workflow$full_rerun),
   length(config$workflow$full_rerun) == 1L,
+  is.logical(config$workflow$run_spotlight_simulation),
+  length(config$workflow$run_spotlight_simulation) == 1L,
+  is.logical(config$workflow$run_database_formatting),
+  length(config$workflow$run_database_formatting) == 1L,
+  is.logical(config$workflow$run_queries),
+  length(config$workflow$run_queries) == 1L,
+  is.logical(config$workflow$run_visualisations),
+  length(config$workflow$run_visualisations) == 1L,
   
   # Degree generation
   all(config$data_simulation$sizes > 0),
@@ -280,6 +373,43 @@ stopifnot(
   all(config$spotlight_simulation$p_obs_nonspotlit_values >= 0),
   all(config$spotlight_simulation$p_obs_nonspotlit_values <= 1),
   config$spotlight_simulation$flush > 0,
+  
+  # Visualisations
+  is.character(config$visualisations$plots_to_run),
+  length(config$visualisations$plots_to_run) > 0,
+  !anyDuplicated(config$visualisations$plots_to_run),
+  is.numeric(config$visualisations$main_spotlight_pct),
+  length(config$visualisations$main_spotlight_pct) == 1L,
+  is.finite(config$visualisations$main_spotlight_pct),
+  config$visualisations$main_spotlight_pct > 0,
+  config$visualisations$main_spotlight_pct <= 1,
+  is.null(config$visualisations$alphas_to_plot) ||
+    (
+      is.numeric(config$visualisations$alphas_to_plot) &&
+      all(is.finite(config$visualisations$alphas_to_plot)) &&
+      all(config$visualisations$alphas_to_plot >= 0)
+    ),
+  is.character(config$visualisations$centrality_metrics),
+  length(config$visualisations$centrality_metrics) > 0,
+  is.character(config$visualisations$correlation_types),
+  length(config$visualisations$correlation_types) > 0,
+  is.character(config$visualisations$network_bias_metrics),
+  length(config$visualisations$network_bias_metrics) > 0,
+  is.character(config$visualisations$network_bias_types),
+  length(config$visualisations$network_bias_types) > 0,
+  is.numeric(config$visualisations$interpolation_grid_n),
+  length(config$visualisations$interpolation_grid_n) == 1L,
+  is.finite(config$visualisations$interpolation_grid_n),
+  config$visualisations$interpolation_grid_n >= 2,
+  config$visualisations$interpolation_grid_n %% 1 == 0,
+  is.logical(config$visualisations$show_coverage_values),
+  length(config$visualisations$show_coverage_values) == 1L,
+  is.logical(config$visualisations$show_top_n_alignment),
+  length(config$visualisations$show_top_n_alignment) == 1L,
+  is.logical(config$visualisations$save_plots),
+  length(config$visualisations$save_plots) == 1L,
+  is.logical(config$visualisations$save_supplementary_coverage),
+  length(config$visualisations$save_supplementary_coverage) == 1L
   # config$spotlight_simulation$network_sample_fraction > 0,
   # config$spotlight_simulation$network_sample_fraction <= 1
 )

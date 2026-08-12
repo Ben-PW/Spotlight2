@@ -1,17 +1,169 @@
+################################################################################
+# Script: Queries3_database_queries.R
+#
+# Queries an already formatted spotlight-results database and creates the R
+# analysis data frames consumed by the visualisation scripts. This script does
+# not recreate either persistent ranked-node table.
+#
+# Requires config$analysis$top_n_proportion to define top-N membership.
+################################################################################
+
 library(DBI)
 library(duckdb)
 library(here)
 library(dplyr)
 library(dbplyr)
 
+if (!exists("config", inherits = TRUE)) {
+  stop("config must be loaded before running database queries.")
+}
+
+top_n_proportion <- config$analysis$top_n_proportion
+
+if (
+  is.null(top_n_proportion) ||
+  length(top_n_proportion) != 1L ||
+  !is.numeric(top_n_proportion) ||
+  !is.finite(top_n_proportion) ||
+  top_n_proportion <= 0 ||
+  top_n_proportion > 1
+) {
+  stop(
+    "`config$analysis$top_n_proportion` must be one finite numeric ",
+    "value greater than 0 and no greater than 1."
+  )
+}
+
+if (!file.exists(config$paths$database)) {
+  stop(
+    "Results database not found: ",
+    config$paths$database,
+    "\nRun the spotlight simulation first or supply an existing database."
+  )
+}
+
 con <- DBI::dbConnect(
   duckdb::duckdb(),
-  dbdir = here::here("Results", "spotlight_probability_results.duckdb")
+  dbdir = config$paths$database
 )
 
-on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+tryCatch(
+  {
 
-dbListTables(con)
+required_tables <- c(
+  "network_results",
+  "network_results_gt",
+  "node_results",
+  "node_results_gt",
+  "simulation_conditions",
+  "node_results_GT_ranked",
+  "node_results_ranked"
+)
+
+missing_tables <- setdiff(
+  required_tables,
+  DBI::dbListTables(con)
+)
+
+if (length(missing_tables) > 0L) {
+  stop(
+    "The results database is missing required tables: ",
+    paste(missing_tables, collapse = ", "),
+    "\nRun database formatting first by setting ",
+    "`config$workflow$run_database_formatting = TRUE`."
+  )
+}
+
+simulation_conditions_df <- DBI::dbReadTable(
+  con,
+  "simulation_conditions"
+)
+
+required_condition_columns <- c(
+  "dataset",
+  "target_size",
+  "target_average_degree",
+  "target_centralisation",
+  "average_degree_tolerance",
+  "centralisation_tolerance"
+)
+
+missing_condition_columns <- setdiff(
+  required_condition_columns,
+  names(simulation_conditions_df)
+)
+
+if (length(missing_condition_columns) > 0L) {
+  stop(
+    "`simulation_conditions` is missing required columns: ",
+    paste(missing_condition_columns, collapse = ", ")
+  )
+}
+
+if (anyDuplicated(simulation_conditions_df$dataset)) {
+  stop("`simulation_conditions` contains duplicate dataset rows.")
+}
+
+condition_value_columns <- c(
+  "target_size",
+  "target_average_degree",
+  "target_centralisation",
+  "average_degree_tolerance",
+  "centralisation_tolerance"
+)
+
+invalid_condition_values <- vapply(
+  simulation_conditions_df[condition_value_columns],
+  function(x) {
+    !is.numeric(x) || anyNA(x) || any(!is.finite(x))
+  },
+  logical(1)
+)
+
+if (any(invalid_condition_values)) {
+  stop(
+    "`simulation_conditions` contains invalid values in: ",
+    paste(
+      names(invalid_condition_values)[invalid_condition_values],
+      collapse = ", "
+    )
+  )
+}
+
+result_datasets <- DBI::dbGetQuery(
+  con,
+  "SELECT DISTINCT dataset FROM network_results_gt"
+)$dataset
+
+unmatched_datasets <- setdiff(
+  result_datasets,
+  simulation_conditions_df$dataset
+)
+
+if (length(unmatched_datasets) > 0L) {
+  stop(
+    "No simulation-condition metadata found for datasets: ",
+    paste(unmatched_datasets, collapse = ", ")
+  )
+}
+
+attach_condition_metadata <- function(df) {
+  dplyr::left_join(
+    df,
+    simulation_conditions_df,
+    by = "dataset",
+    relationship = "many-to-one"
+  )
+}
+
+DBI::dbExecute(
+  con,
+  paste0(
+    "CREATE OR REPLACE TEMP TABLE analysis_parameters AS ",
+    "SELECT CAST(? AS DOUBLE) AS top_n_proportion"
+  ),
+  params = list(top_n_proportion)
+)
 
 ############# Query top of databases to give a visual on structure ##############
 
@@ -48,785 +200,6 @@ network_results <- DBI::dbGetQuery(con, "
                                    LIMIT 50;
                                    ")
 
-################################ Add rank order columns ############################
-
-# The original simulation did not calculate rank order of nodes by centrality scores,
-# This will be useful for outcome metrics and is efficient to do using SQL
-
-# Create table for rank order in ground truth networks
-
-# Use persistent NodeID as a deterministic tie breaker for exact positions
-
-DBI::dbExecute(
-  con,
-  "
-  CREATE OR REPLACE TABLE node_results_GT_ranked AS
-
-  SELECT
-    *,
-
-    /*##########################################################################
-    # Degree: raw
-    ##########################################################################*/
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY Degree_raw DESC
-    ) AS Degree_raw_rank,
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY Degree_raw DESC
-    )
-    +
-    (
-      COUNT(*) OVER (
-        PARTITION BY
-          dataset,
-          replicate_id,
-          Degree_raw
-      ) - 1
-    ) / 2.0 AS Degree_raw_avg_rank,
-
-    ROW_NUMBER() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY
-        Degree_raw DESC,
-        NodeID
-    ) AS Degree_raw_top_position,
-
-
-    /*##########################################################################
-    # Degree: normalised
-    ##########################################################################*/
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY Degree_norm DESC
-    ) AS Degree_norm_rank,
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY Degree_norm DESC
-    )
-    +
-    (
-      COUNT(*) OVER (
-        PARTITION BY
-          dataset,
-          replicate_id,
-          Degree_norm
-      ) - 1
-    ) / 2.0 AS Degree_norm_avg_rank,
-
-    ROW_NUMBER() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY
-        Degree_norm DESC,
-        NodeID
-    ) AS Degree_norm_top_position,
-
-
-    /*##########################################################################
-    # Betweenness: raw
-    ##########################################################################*/
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY Betweenness_raw DESC
-    ) AS Betweenness_raw_rank,
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY Betweenness_raw DESC
-    )
-    +
-    (
-      COUNT(*) OVER (
-        PARTITION BY
-          dataset,
-          replicate_id,
-          Betweenness_raw
-      ) - 1
-    ) / 2.0 AS Betweenness_raw_avg_rank,
-
-    ROW_NUMBER() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY
-        Betweenness_raw DESC,
-        NodeID
-    ) AS Betweenness_raw_top_position,
-
-
-    /*##########################################################################
-    # Betweenness: normalised
-    ##########################################################################*/
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY Betweenness_norm DESC
-    ) AS Betweenness_norm_rank,
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY Betweenness_norm DESC
-    )
-    +
-    (
-      COUNT(*) OVER (
-        PARTITION BY
-          dataset,
-          replicate_id,
-          Betweenness_norm
-      ) - 1
-    ) / 2.0 AS Betweenness_norm_avg_rank,
-
-    ROW_NUMBER() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY
-        Betweenness_norm DESC,
-        NodeID
-    ) AS Betweenness_norm_top_position,
-
-
-    /*##########################################################################
-    # Closeness: raw
-    #
-    # Finite values are ranked normally. Non-finite values, which identify
-    # isolates in these networks, form one tied block at the bottom.
-    ##########################################################################*/
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_raw) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_raw) THEN Closeness_raw
-        END DESC NULLS LAST
-    ) AS Closeness_raw_rank,
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_raw) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_raw) THEN Closeness_raw
-        END DESC NULLS LAST
-    )
-    +
-    (
-      COUNT(*) OVER (
-        PARTITION BY
-          dataset,
-          replicate_id,
-          CASE
-            WHEN isfinite(Closeness_raw) THEN 0
-            ELSE 1
-          END,
-          CASE
-            WHEN isfinite(Closeness_raw) THEN Closeness_raw
-          END
-      ) - 1
-    ) / 2.0 AS Closeness_raw_avg_rank,
-
-    ROW_NUMBER() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_raw) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_raw) THEN Closeness_raw
-        END DESC NULLS LAST,
-        NodeID
-    ) AS Closeness_raw_top_position,
-
-
-    /*##########################################################################
-    # Closeness: normalised
-    #
-    # Apply the same bottom-tie treatment to non-finite normalised values.
-    ##########################################################################*/
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_norm) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_norm) THEN Closeness_norm
-        END DESC NULLS LAST
-    ) AS Closeness_norm_rank,
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_norm) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_norm) THEN Closeness_norm
-        END DESC NULLS LAST
-    )
-    +
-    (
-      COUNT(*) OVER (
-        PARTITION BY
-          dataset,
-          replicate_id,
-          CASE
-            WHEN isfinite(Closeness_norm) THEN 0
-            ELSE 1
-          END,
-          CASE
-            WHEN isfinite(Closeness_norm) THEN Closeness_norm
-          END
-      ) - 1
-    ) / 2.0 AS Closeness_norm_avg_rank,
-
-    ROW_NUMBER() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_norm) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_norm) THEN Closeness_norm
-        END DESC NULLS LAST,
-        NodeID
-    ) AS Closeness_norm_top_position,
-
-
-    /*##########################################################################
-    # Eigenvector
-    ##########################################################################*/
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY Eigenvector DESC
-    ) AS Eigenvector_rank,
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY Eigenvector DESC
-    )
-    +
-    (
-      COUNT(*) OVER (
-        PARTITION BY
-          dataset,
-          replicate_id,
-          Eigenvector
-      ) - 1
-    ) / 2.0 AS Eigenvector_avg_rank,
-
-    ROW_NUMBER() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id
-      ORDER BY
-        Eigenvector DESC,
-        NodeID
-    ) AS Eigenvector_top_position
-
-  FROM node_results_GT;
-  "
-)
-
-
-##################### Create table for rank order in obsereved  #################
-
-DBI::dbExecute(
-  con,
-  "
-  CREATE OR REPLACE TABLE node_results_ranked AS
-
-  SELECT
-    *,
-
-    /*##########################################################################
-    # Degree: raw
-    ##########################################################################*/
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY Degree_raw DESC
-    ) AS Degree_raw_rank,
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY Degree_raw DESC
-    )
-    +
-    (
-      COUNT(*) OVER (
-        PARTITION BY
-          dataset,
-          replicate_id,
-          alpha,
-          spotlight_pct,
-          p_obs_spotlit,
-          p_obs_nonspotlit,
-          Degree_raw
-      ) - 1
-    ) / 2.0 AS Degree_raw_avg_rank,
-
-    ROW_NUMBER() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY
-        Degree_raw DESC,
-        NodeID
-    ) AS Degree_raw_top_position,
-
-
-    /*##########################################################################
-    # Degree: normalised
-    ##########################################################################*/
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY Degree_norm DESC
-    ) AS Degree_norm_rank,
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY Degree_norm DESC
-    )
-    +
-    (
-      COUNT(*) OVER (
-        PARTITION BY
-          dataset,
-          replicate_id,
-          alpha,
-          spotlight_pct,
-          p_obs_spotlit,
-          p_obs_nonspotlit,
-          Degree_norm
-      ) - 1
-    ) / 2.0 AS Degree_norm_avg_rank,
-
-    ROW_NUMBER() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY
-        Degree_norm DESC,
-        NodeID
-    ) AS Degree_norm_top_position,
-
-
-    /*##########################################################################
-    # Betweenness: raw
-    ##########################################################################*/
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY Betweenness_raw DESC
-    ) AS Betweenness_raw_rank,
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY Betweenness_raw DESC
-    )
-    +
-    (
-      COUNT(*) OVER (
-        PARTITION BY
-          dataset,
-          replicate_id,
-          alpha,
-          spotlight_pct,
-          p_obs_spotlit,
-          p_obs_nonspotlit,
-          Betweenness_raw
-      ) - 1
-    ) / 2.0 AS Betweenness_raw_avg_rank,
-
-    ROW_NUMBER() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY
-        Betweenness_raw DESC,
-        NodeID
-    ) AS Betweenness_raw_top_position,
-
-
-    /*##########################################################################
-    # Betweenness: normalised
-    ##########################################################################*/
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY Betweenness_norm DESC
-    ) AS Betweenness_norm_rank,
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY Betweenness_norm DESC
-    )
-    +
-    (
-      COUNT(*) OVER (
-        PARTITION BY
-          dataset,
-          replicate_id,
-          alpha,
-          spotlight_pct,
-          p_obs_spotlit,
-          p_obs_nonspotlit,
-          Betweenness_norm
-      ) - 1
-    ) / 2.0 AS Betweenness_norm_avg_rank,
-
-    ROW_NUMBER() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY
-        Betweenness_norm DESC,
-        NodeID
-    ) AS Betweenness_norm_top_position,
-
-
-    /*##########################################################################
-    # Closeness: raw
-    #
-    # Finite values are ranked normally. Non-finite values, which identify
-    # isolates in these networks, form one tied block at the bottom.
-    ##########################################################################*/
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_raw) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_raw) THEN Closeness_raw
-        END DESC NULLS LAST
-    ) AS Closeness_raw_rank,
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_raw) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_raw) THEN Closeness_raw
-        END DESC NULLS LAST
-    )
-    +
-    (
-      COUNT(*) OVER (
-        PARTITION BY
-          dataset,
-          replicate_id,
-          alpha,
-          spotlight_pct,
-          p_obs_spotlit,
-          p_obs_nonspotlit,
-          CASE
-            WHEN isfinite(Closeness_raw) THEN 0
-            ELSE 1
-          END,
-          CASE
-            WHEN isfinite(Closeness_raw) THEN Closeness_raw
-          END
-      ) - 1
-    ) / 2.0 AS Closeness_raw_avg_rank,
-
-    ROW_NUMBER() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_raw) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_raw) THEN Closeness_raw
-        END DESC NULLS LAST,
-        NodeID
-    ) AS Closeness_raw_top_position,
-
-
-    /*##########################################################################
-    # Closeness: normalised
-    #
-    # Apply the same bottom-tie treatment to non-finite normalised values.
-    ##########################################################################*/
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_norm) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_norm) THEN Closeness_norm
-        END DESC NULLS LAST
-    ) AS Closeness_norm_rank,
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_norm) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_norm) THEN Closeness_norm
-        END DESC NULLS LAST
-    )
-    +
-    (
-      COUNT(*) OVER (
-        PARTITION BY
-          dataset,
-          replicate_id,
-          alpha,
-          spotlight_pct,
-          p_obs_spotlit,
-          p_obs_nonspotlit,
-          CASE
-            WHEN isfinite(Closeness_norm) THEN 0
-            ELSE 1
-          END,
-          CASE
-            WHEN isfinite(Closeness_norm) THEN Closeness_norm
-          END
-      ) - 1
-    ) / 2.0 AS Closeness_norm_avg_rank,
-
-    ROW_NUMBER() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_norm) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_norm) THEN Closeness_norm
-        END DESC NULLS LAST,
-        NodeID
-    ) AS Closeness_norm_top_position,
-
-
-    /*##########################################################################
-    # Eigenvector
-    ##########################################################################*/
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY Eigenvector DESC
-    ) AS Eigenvector_rank,
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY Eigenvector DESC
-    )
-    +
-    (
-      COUNT(*) OVER (
-        PARTITION BY
-          dataset,
-          replicate_id,
-          alpha,
-          spotlight_pct,
-          p_obs_spotlit,
-          p_obs_nonspotlit,
-          Eigenvector
-      ) - 1
-    ) / 2.0 AS Eigenvector_avg_rank,
-
-    ROW_NUMBER() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY
-        Eigenvector DESC,
-        NodeID
-    ) AS Eigenvector_top_position
-
-  FROM node_results;
-  "
-)
-
-
 ##################################### SAMPLING COVERAGE #####################################
 
 # This is the query for heatmps to show sampling coverage over different conditions of
@@ -837,22 +210,23 @@ coverage_heatmap_df <- DBI::dbGetQuery(
   "
   WITH gt_aug AS (
     SELECT
-      dataset,
-      replicate_id,
-      dcent AS gt_dcent,
-      size AS gt_size,
-      density AS gt_density,
+      gt.dataset,
+      gt.replicate_id,
 
-      CASE
-        WHEN dcent BETWEEN 0.05 AND 0.15 THEN 'Low'
-        WHEN dcent BETWEEN 0.25 AND 0.35 THEN 'Medium'
-        WHEN dcent BETWEEN 0.45 AND 0.55 THEN 'High'
-        ELSE 'Outside target band'
-      END AS centralisation_band
+      conditions.target_size,
+      conditions.target_average_degree,
+      conditions.target_centralisation,
 
-    FROM network_results_gt
+      gt.size AS realised_size,
+      gt.density * (gt.size - 1) AS realised_average_degree,
+      gt.dcent AS realised_centralisation
 
-    WHERE source = 'true'
+    FROM network_results_gt AS gt
+
+    INNER JOIN simulation_conditions AS conditions
+      ON gt.dataset = conditions.dataset
+
+    WHERE gt.source = 'true'
   )
 
   SELECT
@@ -861,7 +235,7 @@ coverage_heatmap_df <- DBI::dbGetQuery(
     obs.p_obs_spotlit,
     obs.p_obs_nonspotlit,
 
-    gt.centralisation_band,
+    gt.target_centralisation,
 
     AVG(obs.realised_missingness) AS mean_missingness,
     MEDIAN(obs.realised_missingness) AS median_missingness,
@@ -885,7 +259,6 @@ coverage_heatmap_df <- DBI::dbGetQuery(
    AND obs.replicate_id = gt.replicate_id
 
   WHERE obs.source = 'observed'
-    AND gt.centralisation_band != 'Outside target band'
     AND obs.realised_missingness IS NOT NULL
 
   GROUP BY
@@ -893,11 +266,11 @@ coverage_heatmap_df <- DBI::dbGetQuery(
     obs.spotlight_pct,
     obs.p_obs_spotlit,
     obs.p_obs_nonspotlit,
-    gt.centralisation_band
+    gt.target_centralisation
 
   ORDER BY
     obs.spotlight_pct,
-    gt.centralisation_band,
+    gt.target_centralisation,
     obs.alpha,
     obs.p_obs_spotlit,
     obs.p_obs_nonspotlit
@@ -925,6 +298,8 @@ network_bias_df <- tbl(con, "network_results") %>%
     APL_ARB = (APL_obs - APL_gt)/APL_gt
   ) %>%
   collect()
+
+network_bias_df <- attach_condition_metadata(network_bias_df)
 
 
 ################################## Node bias plots ##############################
@@ -1087,6 +462,8 @@ node_corr_df <- DBI::dbGetQuery(con, "
       p_obs_nonspotlit;
 ")
 
+node_corr_df <- attach_condition_metadata(node_corr_df)
+
 # Diagnostics
 
 # node_corr_df %>%
@@ -1160,14 +537,13 @@ node_rank_df <- DBI::dbGetQuery(con, "
     
 /* 
 ** BLOCK 2:
-** Create a long table with binary indicators for top 10% membership
-** this can be re-used for all outcome measures, but will have to be 
-** recalculated for any other values of N. Not complicated just time consuming
+** Create a long table with binary indicators for configurable top-N membership.
+** The legacy obs_top10 and gt_top10 column names are retained for compatibility.
 */
     
     top10_long AS(
     
-    -- Top 10 for degree centrality
+    -- Top-N degree centrality
     
     SELECT
       dataset,
@@ -1187,15 +563,15 @@ node_rank_df <- DBI::dbGetQuery(con, "
       'Degree' AS metric,
       obs_degree_rank AS obs_rank,
       gt_degree_rank AS gt_rank,
-      CEIL(0.10 * net_size) AS top_n_cutoff,
+      CEIL((SELECT top_n_proportion FROM analysis_parameters) * net_size) AS top_n_cutoff,
         
       CASE
-        WHEN obs_degree_rank <= CEIL(0.10 * net_size) THEN 1
+        WHEN obs_degree_rank <= CEIL((SELECT top_n_proportion FROM analysis_parameters) * net_size) THEN 1
         ELSE 0
       END AS obs_top10,
         
       CASE 
-        WHEN gt_degree_rank <= CEIL(0.10 * net_size) THEN 1
+        WHEN gt_degree_rank <= CEIL((SELECT top_n_proportion FROM analysis_parameters) * net_size) THEN 1
         ELSE 0
       END AS gt_top10
         
@@ -1221,15 +597,15 @@ node_rank_df <- DBI::dbGetQuery(con, "
       'Betweenness' AS metric,
       obs_betweenness_rank AS obs_rank,
       gt_betweenness_rank AS gt_rank,
-      CEIL(0.10 * net_size) AS top_n_cutoff,
+      CEIL((SELECT top_n_proportion FROM analysis_parameters) * net_size) AS top_n_cutoff,
       
       CASE
-        WHEN obs_betweenness_rank <= CEIL(0.10 * net_size) THEN 1
+        WHEN obs_betweenness_rank <= CEIL((SELECT top_n_proportion FROM analysis_parameters) * net_size) THEN 1
         ELSE 0
       END AS obs_top10,
       
       CASE
-        WHEN gt_betweenness_rank <= CEIL(0.10 * net_size) THEN 1
+        WHEN gt_betweenness_rank <= CEIL((SELECT top_n_proportion FROM analysis_parameters) * net_size) THEN 1
         ELSE 0
       END AS gt_top10
       
@@ -1255,15 +631,15 @@ node_rank_df <- DBI::dbGetQuery(con, "
       'Closeness' AS metric,
       obs_closeness_rank AS obs_rank,
       gt_closeness_rank AS gt_rank,
-      CEIL(0.10 * net_size) AS top_n_cutoff,
+      CEIL((SELECT top_n_proportion FROM analysis_parameters) * net_size) AS top_n_cutoff,
       
       CASE
-        WHEN obs_closeness_rank <= CEIL(0.10 * net_size) THEN 1
+        WHEN obs_closeness_rank <= CEIL((SELECT top_n_proportion FROM analysis_parameters) * net_size) THEN 1
         ELSE 0
       END AS obs_top10,
       
       CASE
-        WHEN gt_closeness_rank <= CEIL(0.10 * net_size) THEN 1
+        WHEN gt_closeness_rank <= CEIL((SELECT top_n_proportion FROM analysis_parameters) * net_size) THEN 1
         ELSE 0
       END AS gt_top10
       
@@ -1289,15 +665,15 @@ node_rank_df <- DBI::dbGetQuery(con, "
       'Eigenvector' AS metric,
       obs_eigenvector_rank AS obs_rank,
       gt_eigenvector_rank AS gt_rank,
-      CEIL(0.10 * net_size) AS top_n_cutoff,
+      CEIL((SELECT top_n_proportion FROM analysis_parameters) * net_size) AS top_n_cutoff,
       
       CASE
-        WHEN obs_eigenvector_rank <= CEIL(0.10 * net_size) THEN 1
+        WHEN obs_eigenvector_rank <= CEIL((SELECT top_n_proportion FROM analysis_parameters) * net_size) THEN 1
         ELSE 0
       END AS obs_top10,
       
       CASE
-        WHEN gt_eigenvector_rank <= CEIL(0.10 * net_size) THEN 1
+        WHEN gt_eigenvector_rank <= CEIL((SELECT top_n_proportion FROM analysis_parameters) * net_size) THEN 1
         ELSE 0
       END AS gt_top10
       
@@ -1307,7 +683,7 @@ node_rank_df <- DBI::dbGetQuery(con, "
     
 /*
 ** BLOCK 3:
-** This block takes the top 10 labels stored in the temporary table top10 and counts 
+** This block takes the top-N labels stored in the temporary table and counts
 ** the number of spotlit and non spotlit nodes in each condition, which can then be
 ** used for outcome metrics
 */
@@ -1454,6 +830,8 @@ node_rank_df <- DBI::dbGetQuery(con, "
       p_obs_nonspotlit,
       metric;
 ")
+
+node_rank_df <- attach_condition_metadata(node_rank_df)
 
 # node_rank_df %>%
 #   filter(
@@ -1755,6 +1133,8 @@ ORDER BY
   r.metric;
 ")
 
+rank_lift_df2 <- attach_condition_metadata(rank_lift_df2)
+
 
 ############ Query for data for network level mean bias plots #########
 
@@ -1764,14 +1144,9 @@ ORDER BY
 mn_abs_rel_bias_nets <- DBI::dbGetQuery(con, "
 WITH gt_aug AS (
   SELECT
-    *,
-    CASE 
-      WHEN dcent BETWEEN 0.05 AND 0.15 THEN 'Low'
-      WHEN dcent BETWEEN 0.25 AND 0.35 THEN 'Med'
-      WHEN dcent BETWEEN 0.45 AND 0.55 THEN 'High'
-      ELSE 'WARNING'
-    END AS 'baseline_centralisation'
+    *
   FROM network_results_gt
+  WHERE source = 'true'
 ),
 
 bias_long AS (
@@ -1783,7 +1158,6 @@ bias_long AS (
     obs.spotlight_pct,
     obs.p_obs_spotlit,
     obs.p_obs_nonspotlit,
-    gt.baseline_centralisation,
 
 
     'density' AS metric,
@@ -1806,7 +1180,6 @@ bias_long AS (
     obs.spotlight_pct,
     obs.p_obs_spotlit,
     obs.p_obs_nonspotlit,
-    gt.baseline_centralisation,
 
 
     'dcent' AS metric,
@@ -1829,7 +1202,6 @@ bias_long AS (
     obs.spotlight_pct,
     obs.p_obs_spotlit,
     obs.p_obs_nonspotlit,
-    gt.baseline_centralisation,
 
     'clustering' AS metric,
     obs.clustering AS observed_value,
@@ -1851,7 +1223,6 @@ bias_long AS (
     obs.spotlight_pct,
     obs.p_obs_spotlit,
     obs.p_obs_nonspotlit,
-    gt.baseline_centralisation,
 
 
     'APL' AS metric,
@@ -1871,6 +1242,10 @@ FROM bias_long
 WHERE abs_relative_bias IS NOT NULL
 ")
 
+mn_abs_rel_bias_nets <- attach_condition_metadata(
+  mn_abs_rel_bias_nets
+)
+
 
 
 ################################# Trialing a model ###################################
@@ -1885,14 +1260,7 @@ WITH gt_aug AS (
     clustering AS gt_clustering,
     APL AS gt_APL,
     size AS gt_size,
-    components AS gt_components,
-
-    CASE 
-      WHEN dcent BETWEEN 0.05 AND 0.15 THEN 'Low'
-      WHEN dcent BETWEEN 0.25 AND 0.35 THEN 'Medium'
-      WHEN dcent BETWEEN 0.45 AND 0.55 THEN 'High'
-      ELSE 'Outside target band'
-    END AS baseline_centralisation
+    components AS gt_components
 
   FROM network_results_gt
   WHERE source = 'true'
@@ -1924,8 +1292,6 @@ SELECT
   obs.components AS components_obs,
   gt.gt_components,
 
-  gt.baseline_centralisation,
-
   CONCAT(obs.dataset, '_', obs.replicate_id) AS base_graph_id
 
 FROM network_results AS obs
@@ -1944,3 +1310,16 @@ ORDER BY
   obs.p_obs_spotlit,
   obs.p_obs_nonspotlit;
 ")
+
+network_model_df <- attach_condition_metadata(
+  network_model_df
+)
+
+  },
+  finally = {
+    if (DBI::dbIsValid(con)) {
+      DBI::dbDisconnect(con, shutdown = TRUE)
+    }
+  }
+)
+

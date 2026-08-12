@@ -1,54 +1,75 @@
-#################################################################################
+################################################################################
+# Script: Coverage_heatmap.R
+#
+# Function-only module for sampling-coverage heatmaps.
+################################################################################
 
-# This is the script for the sampling coverage heatmaps. 
-
-#################################################################################
-
-# Transform the queried data as necessary
-coverage_heatmap_df <- coverage_heatmap_df |>
-  dplyr::mutate(
-    centralisation_band = factor(
-      centralisation_band,
-      levels = c("High", "Medium", "Low")
-    ),
-    
-    alpha = factor(
-      alpha,
-      levels = sort(unique(alpha))
-    ),
-    
-    spotlight_pct = factor(
-      spotlight_pct,
-      levels = sort(unique(spotlight_pct)),
-      labels = scales::percent(
-        sort(unique(spotlight_pct)),
-        accuracy = 1
-      )
-    ),
-    
-    p_obs_spotlit = factor(
-      p_obs_spotlit,
-      levels = sort(unique(p_obs_spotlit))
-    ),
-    
-    p_obs_nonspotlit = factor(
-      p_obs_nonspotlit,
-      levels = sort(unique(p_obs_nonspotlit))
+prepare_coverage_heatmap_df <- function(
+    df,
+    alphas_to_plot
+) {
+  validate_visualisation_data(
+    df = df,
+    data_name = "coverage_heatmap_df",
+    required_columns = c(
+      "target_centralisation",
+      "alpha",
+      "spotlight_pct",
+      "p_obs_spotlit",
+      "p_obs_nonspotlit",
+      "mean_missingness"
     )
   )
 
-# Create plotting function so it can be applied to all spotlight percentages (not
-# actually sure how much difference they will make so will have to check)
+  selected_alphas <- resolve_numeric_selection(
+    requested_values = alphas_to_plot,
+    available_values = df$alpha,
+    setting_name = "config$visualisations$alphas_to_plot"
+  )
+
+  output_df <- df |>
+    dplyr::filter(
+      numeric_selection_mask(alpha, selected_alphas)
+    ) |>
+    dplyr::mutate(
+      target_centralisation = ordered_numeric_factor(
+        target_centralisation,
+        decreasing = TRUE
+      ),
+      alpha = factor(
+        format(alpha, trim = TRUE, scientific = FALSE),
+        levels = format(
+          selected_alphas,
+          trim = TRUE,
+          scientific = FALSE
+        )
+      ),
+      p_obs_spotlit = factor(
+        p_obs_spotlit,
+        levels = sort(unique(p_obs_spotlit))
+      ),
+      p_obs_nonspotlit = factor(
+        p_obs_nonspotlit,
+        levels = sort(unique(p_obs_nonspotlit))
+      )
+    )
+
+  if (nrow(output_df) == 0L) {
+    stop("No coverage data remain after applying visualisation selections.")
+  }
+
+  output_df
+}
+
 
 plot_coverage_heatmap <- function(
     df,
     spotlight_pct_choice,
     show_values = TRUE
 ) {
-  
   plot_df <- df |>
     dplyr::filter(
-      spotlight_pct == spotlight_pct_choice
+      dplyr::near(spotlight_pct, spotlight_pct_choice)
     ) |>
     dplyr::mutate(
       text_colour = dplyr::if_else(
@@ -57,8 +78,16 @@ plot_coverage_heatmap <- function(
         "white"
       )
     )
-  
-  p <- ggplot2::ggplot(
+
+  if (nrow(plot_df) == 0L) {
+    stop(
+      "No coverage data found for spotlight_pct = ",
+      spotlight_pct_choice,
+      "."
+    )
+  }
+
+  plot <- ggplot2::ggplot(
     plot_df,
     ggplot2::aes(
       x = p_obs_nonspotlit,
@@ -71,13 +100,13 @@ plot_coverage_heatmap <- function(
       linewidth = 0.4
     ) +
     ggplot2::facet_grid(
-      centralisation_band ~ alpha,
+      target_centralisation ~ alpha,
       labeller = ggplot2::labeller(
-        centralisation_band = function(x) {
-          paste(x, "centralisation")
+        target_centralisation = function(value) {
+          paste(value, "centralisation")
         },
-        alpha = function(x) {
-          paste0("alpha = ", x)
+        alpha = function(value) {
+          paste0("alpha = ", value)
         }
       )
     ) +
@@ -91,12 +120,12 @@ plot_coverage_heatmap <- function(
     ) +
     ggplot2::coord_equal() +
     ggplot2::labs(
-      x = "Observation probability: non-spotlit ties",
-      y = "Observation probability: spotlit ties",
-      title = paste(
-        "Tie missingness under spotlighted observation:",
-        spotlight_pct_choice,
-        "of nodes spotlit"
+      x = expression(p[plain(n)]),
+      y = expression(p[plain(s)]),
+      title = paste0(
+        "Tie missingness under spotlighted observation: ",
+        scales::percent(spotlight_pct_choice, accuracy = 1),
+        " of nodes spotlit"
       ),
       subtitle = paste(
         "Values averaged across ground-truth networks,",
@@ -110,15 +139,12 @@ plot_coverage_heatmap <- function(
       axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
       legend.position = "right"
     )
-  
+
   if (show_values) {
-    p <- p +
+    plot <- plot +
       ggplot2::geom_text(
         ggplot2::aes(
-          label = scales::percent(
-            mean_missingness,
-            accuracy = 1
-          ),
+          label = scales::percent(mean_missingness, accuracy = 1),
           colour = text_colour
         ),
         size = 2.7,
@@ -126,70 +152,60 @@ plot_coverage_heatmap <- function(
       ) +
       ggplot2::scale_colour_identity()
   }
-  
-  p
+
+  plot
 }
 
-# Generate one plot per spotlight percentage
 
-coverage_heatmaps <- lapply(
-  levels(coverage_heatmap_df$spotlight_pct),
-  function(sp) {
-    plot_coverage_heatmap(
-      df = coverage_heatmap_df,
-      spotlight_pct_choice = sp,
-      show_values = TRUE
-    )
+build_coverage_heatmaps <- function(
+    df,
+    main_spotlight_pct,
+    alphas_to_plot = NULL,
+    show_values = TRUE,
+    include_supplementary = TRUE
+) {
+  available_spotlight_pcts <- sort(
+    unique(df$spotlight_pct)
+  )
+
+  resolve_numeric_selection(
+    requested_values = main_spotlight_pct,
+    available_values = available_spotlight_pcts,
+    setting_name = "config$visualisations$main_spotlight_pct"
+  )
+
+  spotlight_pcts_to_plot <- if (include_supplementary) {
+    available_spotlight_pcts
+  } else {
+    main_spotlight_pct
   }
-)
 
-names(coverage_heatmaps) <-
-  levels(coverage_heatmap_df$spotlight_pct)
+  prepared_df <- prepare_coverage_heatmap_df(
+    df = df,
+    alphas_to_plot = alphas_to_plot
+  )
 
-# coverage_heatmaps$`5%`
-# coverage_heatmaps$`1%`
-# coverage_heatmaps$`10%`
+  plots <- stats::setNames(
+    lapply(
+      spotlight_pcts_to_plot,
+      function(spotlight_pct) {
+        plot_coverage_heatmap(
+          df = prepared_df,
+          spotlight_pct_choice = spotlight_pct,
+          show_values = show_values
+        )
+      }
+    ),
+    paste0(
+      "coverage_",
+      vapply(
+        spotlight_pcts_to_plot,
+        make_spotlight_pct_slug,
+        character(1)
+      )
+    )
+  )
 
-# Store main figure
-ggplot2::ggsave(
-  filename = here::here(
-    "Figures",
-    "10pct_coverage_heatmap.pdf"
-  ),
-  plot = coverage_heatmaps$`10%`,
-  device = grDevices::cairo_pdf,
-  width = 180,
-  height = 135,
-  units = "mm",
-  bg = "white"
-)
-
-# Store supplemental figures
-
-ggplot2::ggsave(
-  filename = here::here(
-    "Figures",
-    "Figures_supplemental",
-    "5pct_coverage_heatmap.pdf"
-  ),
-  plot = coverage_heatmaps$`5%`,
-  device = grDevices::cairo_pdf,
-  width = 180,
-  height = 135,
-  units = "mm",
-  bg = "white"
-)
-
-ggplot2::ggsave(
-  filename = here::here(
-    "Figures",
-    "Figures_supplemental",
-    "1pct_coverage_heatmap.pdf"
-  ),
-  plot = coverage_heatmaps$`1%`,
-  device = grDevices::cairo_pdf,
-  width = 180,
-  height = 135,
-  units = "mm",
-  bg = "white"
-)
+  attr(plots, "spotlight_pcts") <- spotlight_pcts_to_plot
+  plots
+}

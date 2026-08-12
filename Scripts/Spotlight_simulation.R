@@ -50,57 +50,31 @@ con <- DBI::dbConnect(
   dbdir = db_path
 )
 
-# Exit condition for db connection
-
-on.exit(
-  {
-    if (exists("con") && DBI::dbIsValid(con)) {
-      DBI::dbDisconnect(con, shutdown = TRUE)
-    }
-  },
-  add = TRUE
-)
-
-
 ################################ Generate baseline networks #################################
 
 #source(here::here("Scripts", "Data_simulation.R"))
 source(here::here("Scripts", "Error_simulation_helpers.R"))
 
-# datasets <- readRDS(
-#  here::here("Data", "datasets_final")
-# )
+if (!exists("simulation_conditions", inherits = FALSE)) {
+  stop(
+    "`simulation_conditions` must be prepared before running ",
+    "Spotlight_simulation.R."
+  )
+}
 
-# Filter to remove nonconforming cases
-# IMPORTANT: code to do this is in Data_simulation.R, as that is where it 
-# would be run normally
-
-
-# Subsample for testing
-
-#datasets <- purrr::map(
-#  datasets,
-#  function(basis_out) {
-#    
-#    n_current <- length(basis_out$networks)
-#    n_keep <- max(1L, floor(n_current * 0.10))
-#    
-#    keep_ids <- sample.int(
-#      n = n_current,
-#      size = n_keep,
-#      replace = FALSE
-#    )
-#    
-#    basis_out$networks <- basis_out$networks[keep_ids]
-#    basis_out
-#  }
-#)
+# Persist the metadata paired with the current ground-truth datasets.
+DBI::dbWriteTable(
+  con,
+  "simulation_conditions",
+  simulation_conditions,
+  overwrite = TRUE
+)
 
 ############################ Convert networks to igraph #####################################
 
 datasets <- datasets |>
-  purrr::map(function(basis_out) {
-    purrr::map(basis_out$networks, function(g) {
+  purrr::map(function(graph_list) {
+    purrr::map(graph_list, function(g) {
       if (inherits(g, "igraph")) { # input data may be network objects in future
         g
       } else {

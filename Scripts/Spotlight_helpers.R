@@ -7,11 +7,7 @@
 
 ####################################################################################
 
-# library(netUtils) - probs don't need anymore tbf
-
 # Function to assign spotlight conditional on spotlight degree
-# It's a bit hacky but for attribute related spotlight, I'm just going to manually
-# assign 'Degree' as a proxy for attribute
 
 assignSpotlight <- function(graph_list, spotlight_pct, alpha = 0) {
   lapply(graph_list, function(g) {
