@@ -76,3 +76,58 @@ Spotlight2/
 │       └── Top10_recall_contour.R
 └── Figures/
 ```
+The key files are:
+
+```Spotlight_main.R```: Script co-ordinating the main workflow.  
+```Config/config.R```: Script containing user definable variables.  
+```Data/Datasets_final```: Supplied datasets used for the spotlight study.  
+```Data/Datasets_final_conditions.csv```: Simulation condition metadata required for database queries. Generated automatically by data simulation stage.  
+```Scripts/Database_queries.R```: Queries the database to pull required data into RAM.  
+```Scripts/Visualisations.R```: Coordinates the visualisation scripts and saves output to ```Figures/```.  
+
+## Software requirements
+This analysis was performed using:  
+R[4.5.2]  
+RStudio[2025.9.2.418]  
+Microsoft Windows 11 Enterprise [10.0.26100 Build 26100]  
+
+This pipeline requires the following packages:  
+```R
+simulation_packages <- c(
+  "akima",
+  "DBI",
+  "dbplyr",
+  "dplyr",
+  "duckdb",
+  "ergm",
+  "ggplot2",
+  "here",
+  "igraph",
+  "intergraph",
+  "network",
+  "purrr",
+  "scales",
+  "sna",
+  "stringr",
+  "tibble",
+  "tidyr"
+)
+
+install.packages(simulation_packages)
+```
+To restore the exact package environment used for this simulation, use the following:
+```R
+install.packages("renv")
+renv::restore()
+```
+
+## Getting started
+1. Download or clone the repository
+2. Open ```Spotlight2.Rproj``` in RStudio
+3. Review the settings in ```Config/config.R``` (ignore if running default parameters)
+4. Start a fresh R session
+5. Run
+```R
+source(Spotlight_main.R)
+```
+It's important to run the script from the project root to the paths created by the ```here``` package resolve properly
