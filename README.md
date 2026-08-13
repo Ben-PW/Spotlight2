@@ -235,3 +235,19 @@ To something like
   ),
 ```
 Save ```config.R``` and source the main script as before. This will create subfolder within ```Figures/``` within which the new visualisations are stored
+
+## Regenerating ground truth networks
+To regenerate ground truth networks and all downstream results, set the following arguments in ```config.R```:
+```R
+workflow = list(
+  full_rerun = TRUE,
+  run_spotlight_simulation = TRUE,
+  run_database_formatting = TRUE,
+  run_queries = TRUE,
+  run_visualisations = TRUE
+)
+```
+This will run the degree sequence generator and the ERGM simulation steps, then perform the rest of the pipeline on the generated datasets.
+This stage is quite computationally intensive (and not particularly well optimised!) and will take several hours (~6).    
+The pipeline will automatically create a new ```simulation_conditions``` table in the specified database from the specified simulation parameters and metadata, meaning you don't need to change the file ```Data/datasets_final_conditions.csv```
+
