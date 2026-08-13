@@ -130,7 +130,7 @@ renv::restore()
 ```R
 source(Spotlight_main.R)
 ```
-It's important to run ```Spotlight_main.R``` from the project root so the paths created by the ```here``` package resolve properly (i.e. don't move it)
+It's important to run ```Spotlight_main.R``` from the project root so the paths created by the ```here``` package resolve properly (i.e. don't move it!)
 
 ## Replicating results
 This is the simplest route to replicate the results of the study. Default parameters are set to perform this workflow unless manually configured otherwise.
@@ -149,3 +149,89 @@ Then run
 source("Spotlight_main.R")
 ```
 Please allow 4-6 hours and up to 2GB memory useage.  
+
+## Supplementary plots
+The visualisation script generates a single plot of each kind for the specified ```main_spotlight_pct``` in ```Config/config.R```.  
+To generate visualisations for every spotlight percentage used in the simulation, check
+```R
+supplementary_plots = TRUE
+```
+Separate folders in ```Figures/``` will be created for each spotlight percentage. For example:
+```
+Figures/Figures_supplemental/spotlight_1pct/
+Figures/Figures_supplemental/spotlight_5pct/
+```
+## Re running visualisations
+Visualisations can be easily re-run without having to repeat database formatting or queries, as long as the queried dataframes are present in the same R session.  
+To do this, simply alter the desired visualisation settings in ```Config/config.R```. Then ensure the following worflow options are specified:
+```R
+workflow = list(
+  full_rerun = FALSE,
+  run_spotlight_simulation = FALSE,
+  run_database_formatting = FALSE,
+  run_queries = FALSE,
+  run_visualisations = TRUE
+)
+```
+Then call
+```R
+source("Spotlight_main.R")
+```
+NOTE: This will overwrite the previously stored visualisations, so make sure to store them elsewhere if they are still required.
+
+## Database safety
+By default, ```config.R``` stores
+```R
+overwrite_database = FALSE
+```
+Meaning the simulation will not run if it detects an existing results database. This can be set to ```TRUE``` if the previous database is no longer required and you want to overwrite it with a new one.  
+Alternatively, if you want to retain the old database but create and analyse a new one, keep
+```R
+overwrite_database = FALSE
+```
+And instead change the ```database``` path in ```config.R```, for example:
+```R
+# DuckDB results database created by Spotlight_main.R.
+    database = here::here(
+      "Results",
+      "spotlight_probability_results.duckdb"
+    ),
+```
+Becomes
+```R
+# DuckDB results database created by Spotlight_main.R.
+    database = here::here(
+      "Results",
+      "NEW_DB.duckdb"
+    ),
+```
+Then check these settings in ```config.R```
+```R
+workflow = list(
+  full_rerun = FALSE,
+  run_spotlight_simulation = TRUE,
+  run_database_formatting = TRUE,
+  run_queries = TRUE,
+  run_visualisations = TRUE
+)
+```
+save the ```config.R``` file and run
+```R
+source("Spotlight_main.R")
+```
+This will re-run the spotlight simulation (on the provided data), store the results in a new database called ```NEW_DB.duckdb```, which all the downstream scripts will then operate on, leaving the old database untouched.  
+
+
+NOTE: This will overwrite the existing queried dataframes and visualisations from the previous simulation, if it is run in the same session. To store the generated figures in a new folder, simply change the following in ```config.R```:
+```R
+    # Directory used by the visualisation scripts.
+    figures = here::here("Figures")
+  ),
+```
+To something like
+```R
+    # Directory used by the visualisation scripts.
+    figures = here::here("Figures", "NEW_FIGURES")
+  ),
+```
+Save ```config.R``` and source the main script as before. This will create subfolder within ```Figures/``` within which the new visualisations are stored
