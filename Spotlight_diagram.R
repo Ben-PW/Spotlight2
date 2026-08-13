@@ -16,6 +16,7 @@ source(here::here("Scripts", "Spotlight_helpers.R"))
 # 1. Select one representative ground-truth network
 ################################################################################
 
+datasets <- readRDS(here::here("Data","Datasets_final"))
 # Change this object if another network gives a cleaner visualisation
 chosen_network <- datasets$n60_ad3_c3$networks[[1]]
 
@@ -465,11 +466,6 @@ figure2_edges <- figure2_edges |>
       panel_label,
       levels = figure2_panel_levels
     )
-  ) |>
-  # Draw grey observed edges first and red missing edges second
-  dplyr::arrange(
-    panel_order,
-    edge_status
   )
 
 
@@ -480,16 +476,17 @@ figure2_edges <- figure2_edges |>
 figure2 <- ggplot2::ggplot() +
   
   ggplot2::geom_segment(
-    data = figure2_edges,
+    data = figure2_edges |>
+      dplyr::filter(observed),
     mapping = ggplot2::aes(
       x = x,
       y = y,
       xend = xend,
-      yend = yend,
-      colour = edge_status,
-      linewidth = edge_status,
-      alpha = edge_status
+      yend = yend
     ),
+    colour = "grey72",
+    linewidth = 0.35,
+    alpha = 0.55,
     lineend = "round"
   ) +
   
@@ -529,40 +526,9 @@ figure2 <- ggplot2::ggplot() +
   
   spotlight_fill_scale() +
   
-  ggplot2::scale_colour_manual(
-    values = c(
-      "Observed" = "grey72",
-      "Unobserved" = "#C62828"
-    ),
-    name = "True edge"
-  ) +
-  
-  ggplot2::scale_linewidth_manual(
-    values = c(
-      "Observed" = 0.35,
-      "Unobserved" = 0.75
-    ),
-    guide = "none"
-  ) +
-  
-  ggplot2::scale_alpha_manual(
-    values = c(
-      "Observed" = 0.55,
-      "Unobserved" = 0.95
-    ),
-    guide = "none"
-  ) +
-  
   ggplot2::guides(
     fill = ggplot2::guide_colourbar(
       order = 1
-    ),
-    colour = ggplot2::guide_legend(
-      order = 2,
-      override.aes = list(
-        linewidth = 1,
-        alpha = 1
-      )
     )
   ) +
   
@@ -579,7 +545,7 @@ figure2 <- ggplot2::ggplot() +
     caption = paste0(
       "Node fill shows estimated P(spotlit). ",
       "Black rings identify nodes selected in the realised spotlight assignment. ",
-      "Red edges were present in the ground-truth network but were not observed."
+      "Unobserved edges are omitted."
     )
   ) +
   
@@ -630,7 +596,10 @@ make_observation_plot <- function(
 ) {
   
   edge_data <- figure2_edges |>
-    dplyr::filter(panel_order %in% panel_orders) |>
+    dplyr::filter(
+      panel_order %in% panel_orders,
+      observed
+    ) |>
     dplyr::mutate(
       panel_label = droplevels(panel_label)
     )
@@ -643,11 +612,11 @@ make_observation_plot <- function(
         x = x,
         y = y,
         xend = xend,
-        yend = yend,
-        colour = edge_status,
-        linewidth = edge_status,
-        alpha = edge_status
+        yend = yend
       ),
+      colour = "grey35",
+      linewidth = 0.70,
+      alpha = 0.85,
       lineend = "round"
     ) +
     
@@ -685,39 +654,8 @@ make_observation_plot <- function(
     
     spotlight_fill_scale() +
     
-    ggplot2::scale_colour_manual(
-      values = c(
-        "Observed" = "grey35",
-        "Unobserved" = "#C62828"
-      ),
-      name = "True edge"
-    ) +
-    
-    ggplot2::scale_linewidth_manual(
-      values = c(
-        "Observed" = 0.70,
-        "Unobserved" = 0.55
-      ),
-      guide = "none"
-    ) +
-    
-    ggplot2::scale_alpha_manual(
-      values = c(
-        "Observed" = 0.85,
-        "Unobserved" = 0.75
-      ),
-      guide = "none"
-    ) +
-    
     ggplot2::guides(
-      fill = ggplot2::guide_colourbar(order = 1),
-      colour = ggplot2::guide_legend(
-        order = 2,
-        override.aes = list(
-          linewidth = 1,
-          alpha = 1
-        )
-      )
+      fill = ggplot2::guide_colourbar(order = 1)
     ) +
     
     ggplot2::coord_equal(
@@ -730,7 +668,7 @@ make_observation_plot <- function(
       caption = paste0(
         "Node fill shows estimated P(spotlit). ",
         "Black rings identify nodes selected in the realised spotlight assignment. ",
-        "Red edges were present in the ground-truth network but were not observed."
+        "Unobserved edges are omitted."
       )
     ) +
     

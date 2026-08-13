@@ -44,6 +44,8 @@ config <- list(
 
     # Format results database to facilitate querying
     # This can be FALSE when querying an existing, already formatted database.
+    # NB this database will remain consistent between R sessions, meaning further
+    # formatting stages are not required once one has run.
     run_database_formatting = FALSE,
 
     # Query the formatted database and create analysis data frames in R.
