@@ -348,6 +348,24 @@ The analysis includes:
 #### Analysis dataframes
 When `config$workflow$run_queries = TRUE`, the pipeline will output several dataframes into the current R session.  
 These contain the data used for the visualisations, but they can also be saved and used for further analysis. 
+NOTE: These dataframes are not saved automatically and exist only in the current R session. To save a given dataframe use some version of:
+```R
+saveRDS(
+  network_model_df,
+  file = here::here(
+    "Results",
+    "network_model_df.rds"
+  )
+)
+
+# To load
+network_model_df <- readRDS(
+  here::here(
+    "Results",
+    "network_model_df.rds"
+  )
+)
+```
 
 | Object | Description |
 | ------- | ----------- |
@@ -381,6 +399,109 @@ network_bias_df |>
   )
 ```
 
+#### Identifying individual nodes, networks, and querying results
+If querying the data yourself, please note that dataset or replicate_id ALONE are NOT unique identifiers. 
+- `dataset`: The group of ground truth networks generated for a given simulation parameter combination
+- `replicate_id`: The id of an individual network within that group (same values exist between `dataset`s)
+- `dataset` + `replicate_id` is, therefore, a unique identifier
+
+
+For example:
+```R
+# connect to  database
+con <- DBI::dbConnect(
+  duckdb::duckdb(),
+  dbdir = config$paths$database
+)
+
+# retrieve ground truth whole network statistics for a single network
+individual_network_df <- DBI::dbGetQuery(con, "
+   SELECT *
+   FROM network_results_gt
+   WHERE dataset = 'n30_ad3_c1'
+     AND replicate_id = 1;
+   ")
+```
+
+
+As each ground truth network is subjected to all observation conditions, a given observed network must also be indentified by its observation conditions.
+
+```R
+individual_observed_network_df <- DBI::dbGetQuery(con, "
+   SELECT *
+   FROM network_results
+   WHERE dataset = 'n30_ad3_c1'
+     AND replicate_id = 1
+     AND alpha = 2
+     AND spotlight_pct = 0.10
+     AND p_obs_spotlit = 0.80
+     AND p_obs_nonspotlit = 0.20;
+   ")
+```
+
+Querying individual nodes is similar, with the same caveat that the same values of NodeID can be found across dataset + replicate_id combinations, meaning they must be combined to form a unique identifier
+```R
+individual_node <- DBI:dbGetQuery(con, "
+   SELECT *
+   FROM node_results_gt
+   WHERE dataset = 'n30_ad3_c1'
+     AND replicate_id = 1
+     AND NodeID = 5;
+   ")
+
+individual_observed_node <- DBI::dbGetQuery(con, "
+   SELECT *
+   FROM node_results
+   WHERE dataset = 'n30_ad3_c1'
+     AND replicate_id = 1
+     AND NodeID = 5
+     AND alpha = 2
+     AND spotlight_pct = 0.10
+     AND p_obs_spotlit = 0.80
+     AND p_obs_nonspotlit = 0.20;
+   ")
+```
+The variables `dataset` and `replicate_id` are therefore required to properly query network results, with `NodeID` also being required for node level results. It is recommended that as much data preparation be done within the query, to minimise computational demand once the dataframe is loaded.
+```R
+# Example case of querying node level centrality differences
+node_results_df <- DBI::dbGetQuery (con, "
+   SELECT
+     obs.dataset, -- retrieve GT dataset family
+     obs.replicate_id, -- retrieve individual network identifiers
+     obs.NodeID, -- retrieve individual node identifiers
+     obs.alpha, -- retrieve alpha conditions
+     obs.spotlight_pct, -- retrieve spotlight_pct conditions
+     obs.p_obs_spotlit, -- retrieve spotlit tie observation probabilities
+     obs.p_obs_nonspotlit, -- non spotlit ties observation probabilities
+     obs.Spotlight, -- individual node spotlit status
+
+     gt.Degree_raw AS degree_ground_truth,
+     obs.Degree_raw AS degree_observed,
+     obs.Degree_raw - gt.Degree_raw AS degree_difference, -- define outcome metric and calculate within query
+
+     gt.Betweenness_raw AS betweenness_ground_truth,
+     obs.Betweenness_raw AS betweenness_observed,
+     obs.Betweenness_raw - gt.Betweenness_raw
+       AS betweenness_difference,
+
+     gt.Closeness_raw AS closeness_ground_truth,
+     obs.Closeness_raw AS closeness_observed,
+     obs.Closeness_raw - gt.Closeness_raw
+       AS closeness_difference,
+
+     gt.Eigenvector AS eigenvector_ground_truth,
+     obs.Eigenvector AS eigenvector_observed,
+     obs.Eigenvector - gt.Eigenvector
+       AS eigenvector_difference
+
+   FROM node_results AS obs
+
+   INNER JOIN node_results_gt AS gt
+     ON obs.dataset = gt.dataset -- join data across composite unique identifier
+    AND obs.replicate_id = gt.replicate_id
+    AND obs.NodeID = gt.NodeID;
+   ")
+```
 ## Randomness and reproducibility 
 Random seeds are specified separately for:  
 - degree-sequence generation
