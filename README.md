@@ -271,7 +271,7 @@ The pipeline will automatically create a new ```simulation_conditions``` table i
 >   the pipeline expects the `simulation_conditions` table to already exist
 >   inside the DuckDB database specified by `config$paths$database`.
 >
-> Changing workflow settings or file paths independently
+> Changing workflow settings or file paths independently of each other
 > can therefore combine results and metadata from different simulation runs.
 > This may produce incorrect analyses or cause the pipeline’s validation checks
 > to fail. When experimenting, use a new database filename and ensure that the
@@ -345,6 +345,41 @@ The analysis includes:
 - Top-N node recall
 - spotlighted-node rank lift
 
+#### Analysis dataframes
+When `config$workflow$run_queries = TRUE`, the pipeline will output several dataframes into the current R session.  
+These contain the data used for the visualisations, but they can also be saved and used for further analysis. 
+
+| Object | Description |
+| ------- | ----------- |
+| `coverage_heatmap_df` | Aggregated edge-missingness results across spotlight assignment and observation conditions. Includes mean, median, and interquartile-range estimates of realised missingness, and network target centralisation |
+| `network_bias_df` | Network-level observed and ground-truth statistics joined by dataset and replicate_id (unique identifier of network within `dataset` group). Includes relative bias measures for density, degree centralisation, clustering. |
+| `mn_abs_rel_bias_nets` | Long-format network-bias data used by the contour plots. Contains observed and ground-truth values, signed relative bias, and absolute relative bias for each network metric. |
+| `node_corr_df` | Pearson and rank correlations between observed and ground-truth node-centrality values for each network and observation condition. |
+| `node_rank_df` | Top-N ranking results, including overlap, recall, Jaccard similarity, spotlight alignment, and related ranking measures. NB: Due to the rank breaking employed in this simulation, Precision = Recall = Intersection/N | 
+| `rank_lift_df2` | Changes in node rank under the observation process, separated by spotlight status and centrality measure. This is used for the rank-lift line and contour plots. Also includes realised tie missingness for each condition |
+| `simulation_conditions_df` | Metadata describing each ground-truth dataset condition, including target network size, average degree, and centralisation. |  
+
+
+The condition metadata is attached to the analysis data frames, making it possible to group or model results according to the simulation parameters of the ground-truth networks. For example:
+```R
+library(dplyr)
+
+network_bias_df |>
+  group_by(
+    target_size,
+    target_average_degree,
+    target_centralisation,
+    spotlight_pct,
+    alpha
+  ) |>
+  summarise(
+    mean_centralisation_bias = mean(
+      dcent_ARB, # degree centralisation average relative bias
+      na.rm = TRUE
+    ),
+    .groups = "drop"
+  )
+```
 
 ## Randomness and reproducibility 
 Random seeds are specified separately for:  
