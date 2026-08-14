@@ -4,7 +4,7 @@ This repository contains the code, simulated network data, and analysis
 pipeline used for:
 
 > [Link to paper to go here]  
-> [Benjamin Palfreeman-Watt, David Buil-Gil, Tomáš Diviák, Nicholas Trajtenberg-Pareja]
+> [Benjamin Palfreeman-Watt, David Buil-Gil, Tomáš Diviák, Nicolas Trajtenberg-Pareja]
 
 (Just went with alphabetical order for now)  
 
