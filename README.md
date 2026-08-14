@@ -391,3 +391,11 @@ The pipeline logs errors in `Results/error_log.txt`. This file is only created i
 Error messages take the form:  
 `ERROR | dataset = a | alpha = b | spotlight_pct = c | p_obs_spotlit = d | p_obs_nonspotlit = e | message = f`
 
+## Citation
+If you use the datasets or code provided in this repository, please cite
+[link to paper to go here hopefully!]  
+Repository  
+[Repository archive to go here]  
+License  
+[License type to ogo here]
+
