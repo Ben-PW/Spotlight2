@@ -40,13 +40,13 @@ config <- list(
     
     # Select the downstream stages to run from Spotlight_main.R.
     # This can be FALSE if simulation has already run and written results to db
-    run_spotlight_simulation = FALSE,
+    run_spotlight_simulation = TRUE,
 
     # Format results database to facilitate querying
     # This can be FALSE when querying an existing, already formatted database.
     # NB this database will remain consistent between R sessions, meaning further
     # formatting stages are not required once one has run.
-    run_database_formatting = FALSE,
+    run_database_formatting = TRUE,
 
     # Query the formatted database and create analysis data frames in R.
     # This can be FALSE if queried datasets are already in the environment
