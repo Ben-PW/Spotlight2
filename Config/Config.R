@@ -90,7 +90,7 @@ config <- list(
     # Error log created if an observation condition fails.
     error_log = here::here(
       "Results",
-      "probability_simulation_error_log.txt"
+      "error_log.txt"
     ),
     
     # Directory used by the visualisation scripts.
@@ -255,7 +255,7 @@ config <- list(
     ),
     
     # Number of graph-condition results accumulated before writing a batch to
-    # DuckDB.
+    # DuckDB and deleting from RAM
     flush = 50L
     
     # Proportion of networks retained from each dataset condition
