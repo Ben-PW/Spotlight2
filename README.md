@@ -4,7 +4,8 @@ This repository contains the code, simulated network data, and analysis
 pipeline used for:
 
 > [Link to paper to go here]  
-> [Benjamin Palfreeman-Watt, David Buil-Gil, Tomas Diviak, Nicholas Trajtenberg-Pareja]  
+> [Benjamin Palfreeman-Watt, David Buil-Gil, Tomas Diviak, Nicholas Trajtenberg-Pareja]
+(Just went with alphabetical order for now)  
 
 The primary purpose of the repository is to support reproduction of the
 simulation results and figures reported in the paper. However, the configuration file
