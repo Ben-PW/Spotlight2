@@ -75,7 +75,7 @@ basis_list <- basis_grid |>
           freeman_centralisation = freeman_centralisation,
           tolerance = config$data_simulation$centralisation_tolerance,
           min_degree = config$data_simulation$min_degree,
-          seed = seed, 
+          seed = seed,
           verbose = config$data_simulation$degree_sampling_verbose,
           cut_breaks = config$data_simulation$cut_breaks,
           slice_n = config$data_simulation$slice_n
