@@ -461,7 +461,7 @@ individual_observed_node <- DBI::dbGetQuery(con, "
      AND p_obs_nonspotlit = 0.20;
    ")
 ```
-The variables `dataset` and `replicate_id` are therefore required to properly query network results, with `NodeID` also being required for node level results. It is recommended that as much data preparation be done within the query, to minimise computational demand once the dataframe is loaded.
+The variables `dataset` and `replicate_id` are therefore required to properly query network results, with `NodeID` also being required for node level results. It is recommended that, for large simulation runs, as much data preparation be done within the query, to minimise computational demand once the dataframe is loaded.
 ```R
 # Example case of querying node level centrality differences
 node_results_df <- DBI::dbGetQuery (con, "
