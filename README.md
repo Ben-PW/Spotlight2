@@ -304,10 +304,11 @@ These include
 Users are welcome to experiment with these parameters, however there are a few things to bear in mind:
 - It is a good idea to specify a new database path if you have existing results of interest. e.g.
 ```R
-config$paths$database <- here::here(
-  "Results",
-  "experimental_results.duckdb"
-)
+# DuckDB results database created by Spotlight_main.R.
+    database = here::here(
+      "Results",
+      "NEW_DB.duckdb"
+    ),
 ```
 - Multiple databases can start to use a significant amount of disk space. If performing many exploratory simulations, you can keep the paths the same and just set
 ```R
