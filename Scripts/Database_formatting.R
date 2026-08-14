@@ -1,7 +1,7 @@
 ################################################################################
 # Script: Queries3_database_formatting.R
 #
-# Creates the persistent ranked-node tables required by the Queries3 analysis.
+# Creates the persistent ranked-node tables required by the analysis.
 # Run this after creating or replacing the raw spotlight-results database.
 # The stage can be skipped when these formatted tables already exist.
 ################################################################################
@@ -26,6 +26,7 @@ con <- DBI::dbConnect(
   dbdir = config$paths$database
 )
 
+################################ Formatting begins ###############################
 tryCatch(
   {
 
@@ -125,7 +126,7 @@ if (length(unmatched_datasets) > 0L) {
 ################################ Add rank order columns ############################
 
 # The original simulation did not calculate rank order of nodes by centrality scores,
-# This will be useful for outcome metrics and is efficient to do using SQL
+# This is pretty easy to do with SQL though so no bother
 
 # Create table for rank order in ground truth networks
 
@@ -172,7 +173,7 @@ DBI::dbExecute(
         replicate_id
       ORDER BY
         Degree_raw DESC,
-        NodeID
+        NodeID -- Using NodeID as a semi random, repeatable, deterministic tie breaker
     ) AS Degree_raw_top_position,
 
 
@@ -291,7 +292,7 @@ DBI::dbExecute(
     # Closeness: raw
     #
     # Finite values are ranked normally. Non-finite values, which identify
-    # isolates in these networks, form one tied block at the bottom.
+    # isolates, will form one tied block at the bottom.
     ##########################################################################*/
 
     RANK() OVER (
@@ -460,7 +461,7 @@ DBI::dbExecute(
 
 
 ##################### Create table for rank order in obsereved  #################
-
+# Basically a copy and paste from above with different vars
 DBI::dbExecute(
   con,
   "
@@ -685,7 +686,7 @@ DBI::dbExecute(
     # Closeness: raw
     #
     # Finite values are ranked normally. Non-finite values, which identify
-    # isolates in these networks, form one tied block at the bottom.
+    # isolates will form one tied block at the bottom.
     ##########################################################################*/
 
     RANK() OVER (

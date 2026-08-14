@@ -3,7 +3,7 @@
 #
 # Queries an already formatted spotlight-results database and creates the R
 # analysis data frames consumed by the visualisation scripts. This script does
-# not recreate either persistent ranked-node table.
+# not recreate either persistent ranked-node table (done in fomratting)
 #
 # Requires config$analysis$top_n_proportion to define top-N membership.
 ################################################################################
@@ -20,6 +20,7 @@ if (!exists("config", inherits = TRUE)) {
 
 top_n_proportion <- config$analysis$top_n_proportion
 
+# Validate Top N selection
 if (
   is.null(top_n_proportion) ||
   length(top_n_proportion) != 1L ||
@@ -47,6 +48,7 @@ con <- DBI::dbConnect(
   dbdir = config$paths$database
 )
 
+################################## Queries begin here ###########################
 tryCatch(
   {
 
@@ -112,6 +114,7 @@ condition_value_columns <- c(
   "centralisation_tolerance"
 )
 
+# Check provided data simulation parameters
 invalid_condition_values <- vapply(
   simulation_conditions_df[condition_value_columns],
   function(x) {
@@ -130,6 +133,7 @@ if (any(invalid_condition_values)) {
   )
 }
 
+# Check that all produced datasets match the simulation params
 result_datasets <- DBI::dbGetQuery(
   con,
   "SELECT DISTINCT dataset FROM network_results_gt"
@@ -147,15 +151,17 @@ if (length(unmatched_datasets) > 0L) {
   )
 }
 
+# Attach data generation conditions to specified df
 attach_condition_metadata <- function(df) {
   dplyr::left_join(
     df,
     simulation_conditions_df,
     by = "dataset",
-    relationship = "many-to-one"
+    relationship = "many-to-one" # many analysis rows to one metadata row
   )
 }
 
+# Allows queries to adapt to selected Top N proportion
 DBI::dbExecute(
   con,
   paste0(
@@ -282,8 +288,8 @@ coverage_heatmap_df <- DBI::dbGetQuery(
 ######################## Query to get network level differences ######################
 
 # Because the tables for network level results are comparatively small, they can
-# just be queried straight from the database. For larger runs, this would not be 
-# feasible
+# just be queried straight from the database. For larger runs would need a proper
+# query
 
 network_bias_df <- tbl(con, "network_results") %>%
   inner_join(
@@ -538,7 +544,7 @@ node_rank_df <- DBI::dbGetQuery(con, "
 /* 
 ** BLOCK 2:
 ** Create a long table with binary indicators for configurable top-N membership.
-** The legacy obs_top10 and gt_top10 column names are retained for compatibility.
+** obs_top10 and gt_top10 are legacy but retained to stop things breaking.
 */
     
     top10_long AS(
@@ -758,7 +764,8 @@ node_rank_df <- DBI::dbGetQuery(con, "
 /*
 ** BLOCK 4:
 ** This block takes the union, intersection, etc of spotlight topN membership calculated
-** in block 3 and converts them into the outcome metrics for this section
+** in block 3 and converts them into the outcome metrics for this section.
+** As of the rank breaking change, some of these are now a bit superfluous
 */
 
     SELECT
