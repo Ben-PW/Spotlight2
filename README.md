@@ -5,6 +5,7 @@ pipeline used for:
 
 > [Link to paper to go here]  
 > [Benjamin Palfreeman-Watt, David Buil-Gil, Tomas Diviak, Nicholas Trajtenberg-Pareja]
+
 (Just went with alphabetical order for now)  
 
 The primary purpose of the repository is to support reproduction of the
