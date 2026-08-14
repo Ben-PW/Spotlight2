@@ -3,7 +3,7 @@
 This repository contains the code, simulated network data, and analysis
 pipeline used for:
 
-> [Simulating the Impacts of Spotlight Effects on Covert Networks]  
+> [Link to paper to go here]  
 > [Benjamin Palfreeman-Watt, David Buil-Gil, Tomas Diviak, Nicholas Trajtenberg-Pareja]  
 
 The primary purpose of the repository is to support reproduction of the
@@ -250,4 +250,144 @@ workflow = list(
 This will run the degree sequence generator and the ERGM simulation steps, then perform the rest of the pipeline on the generated datasets.
 This stage is quite computationally intensive (and not particularly well optimised!) and will take several hours (~6).    
 The pipeline will automatically create a new ```simulation_conditions``` table in the specified database from the specified simulation parameters and metadata, meaning you don't need to change the file ```Data/datasets_final_conditions.csv```
+
+
+[!WARNING]
+> The workflow settings in `Config/Config.R` determine which ground-truth
+> networks, simulation-condition metadata, and results database are used.
+> These inputs must describe the same simulation run.
+>
+> In particular:
+>
+> - When `full_rerun = TRUE`, `simulation_conditions` is generated directly
+>   from the newly simulated ground-truth networks.
+> - When `full_rerun = FALSE` and the spotlight simulation stage is run,
+>   `simulation_conditions` is loaded from
+>   `Data/datasets_final_conditions.csv`,
+>   As the pipeline assumes the provided dataset is being used.
+> - When only database formatting, queries, or visualisations are requested,
+>   the pipeline expects the `simulation_conditions` table to already exist
+>   inside the DuckDB database specified by `config$paths$database`.
+>
+> Changing workflow settings or file paths independently
+> can therefore combine results and metadata from different simulation runs.
+> This may produce incorrect analyses or cause the pipeline’s validation checks
+> to fail. When experimenting, use a new database filename and ensure that the
+> selected datasets, condition metadata, and database all belong to the same
+> run.
+
+## Configuration
+All commonly changed parameters are located in `Config/config.R`
+
+### Ground truth network parameters
+These include
+- Network size
+- Target average degree
+- Target Freeman centralisation
+- Density and centralisation tolerances
+- Number of candidate degree sequences
+- ERGM coefficients
+- Network connectedness requirements
+- Target number of retained networks per size \* average degree \* centralisation condition
+
+
+### Spotlight observation parameters
+These include
+- `spotlight_pcts` the proportion of nodes to be spotlit
+- `alphas` the various weights assigned to degree when sampling nodes for spotlight
+- `p_obs_spotlit_values` the observation probabilities of spotlit ties
+- `p_obs_nonspotlit_values` the observation probabilities of non-spotlit ties
+
+
+Users are welcome to experiment with these parameters, however there are a few things to bear in mind:
+- It is a good idea to specify a new database path if you have existing results of interest. e.g.
+```R
+config$paths$database <- here::here(
+  "Results",
+  "experimental_results.duckdb"
+)
+```
+- Multiple databases can start to use a significant amount of disk space. If performing many exploratory simulations, you can keep the paths the same and just set
+```R
+overwrite_database <- TRUE
+```
+- Increasing the number of different parameter values causes the run time and database sizes to grow rapidly. The database formatting stage also significantly increases the size of the database
+- Database formatting and querying can be RAM intensive (compared to the rest of the pipeline). The packages used typically write overflow to a temporary folder, however very large databases could cause issues on machines with RAM under 6GB
+
+### Analysis and visualisation parameters
+These include
+- The definition of Top N
+- Plot types to generate
+- Centrality measures
+- Correlation types
+- Network statistics
+- Alpha values displayed in visualisations
+- Main spotlight proportion to visualise
+- Supplementary figures
+
+
+## Outputs
+The results database contains tables for:
+- ground-truth network statistics
+- ground-truth node centralities
+- observed network statistics
+- observed node centralities
+- simulation-condition metadata
+- ranked node results used by the analysis  
+
+
+The analysis includes:
+- edge coverage and realised missingness
+- relative and absolute network-statistic bias
+- node-centrality correlation
+- Top-N node recall
+- spotlighted-node rank lift
+
+
+## Randomness and reproducibility 
+Random seeds are specified separately for:  
+- degree-sequence generation
+- ERGM network simulation
+- selection of retained ground-truth networks
+- spotlight assignment and probabilistic edge observation
+
+
+The supplied ground-truth networks and results database should be treated as the 'official' inputs for reproducing the reported figures.  
+Exact regeneration from seeds may also depend on the R version and package versions, particularly for the network-generation stages. For exact replication, it is advised to use 
+```R
+install.packages("renv")
+renv::restore()
+```
+before running the simulation
+
+## Troubleshooting
+Some common pitfalls could include the following
+
+
+#### The database already exists
+The simulation will not run if a database is detected on `config$paths$database` and `overwrite_database = FALSE`.  
+You can either change the `database` path or enable overwriting and run the simulation
+
+
+#### Required query objects are missing
+If visualisations are requested without rerunning queries, the required query data frames must already exist in the current R session.  
+If the database already exists and formatting stages have run, just set `run_queries <- TRUE` and re-run main.
+
+
+#### Required database tables are missing
+Unformatted databases will not contain the required `simulation_conditions` table or the node ranking tables which are expected by the queries. Check:
+```R
+run_database_formatting = TRUE
+```
+in `config.R`
+
+
+#### Simulation condition failure
+
+
+The pipeline logs errors in `Results/error_log.txt`. This file is only created if the pipeline has encountered errors during the simulation, so it is useful to check during and after the simulation runs.  
+
+
+Error messages take the form:  
+`ERROR | dataset = a | alpha = b | spotlight_pct = c | p_obs_spotlit = d | p_obs_nonspotlit = e | message = f`
 
