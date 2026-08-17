@@ -1260,70 +1260,77 @@ mn_abs_rel_bias_nets <- attach_condition_metadata(
 
 ################################# Trialing a model ###################################
 
-network_model_df <- DBI::dbGetQuery(con, "
-WITH gt_aug AS (
-  SELECT
-    dataset,
-    replicate_id,
-    density AS gt_density,
-    dcent AS gt_dcent,
-    clustering AS gt_clustering,
-    APL AS gt_APL,
-    size AS gt_size,
-    components AS gt_components
+# Did not end up being used but option for further analysis. One issue is that 
+# a significant amount of variation in network level statistics is explain by 
+# random effects at the individual network level, meaning this might not be the 
+# best approach here. Node level analysis should be very possible with mixed
+# effects models, however, as I can't see the same issue happening at that 
+# level
 
-  FROM network_results_gt
-  WHERE source = 'true'
-)
-
-SELECT
-  obs.dataset,
-  obs.replicate_id,
-  obs.alpha,
-  obs.spotlight_pct,
-  obs.p_obs_nonspotlit,
-  obs.p_obs_spotlit,
-
-  obs.density AS density_obs,
-  gt.gt_density,
-
-  obs.dcent AS dcent_obs,
-  gt.gt_dcent,
-
-  obs.clustering AS clustering_obs,
-  gt.gt_clustering,
-
-  obs.APL AS APL_obs,
-  gt.gt_APL,
-
-  obs.size AS obs_size,
-  gt.gt_size,
-
-  obs.components AS components_obs,
-  gt.gt_components,
-
-  CONCAT(obs.dataset, '_', obs.replicate_id) AS base_graph_id
-
-FROM network_results AS obs
-
-INNER JOIN gt_aug AS gt
-  ON obs.dataset = gt.dataset
- AND obs.replicate_id = gt.replicate_id
-
-WHERE obs.source = 'observed'
-
-ORDER BY
-  obs.dataset,
-  obs.replicate_id,
-  obs.alpha,
-  obs.spotlight_pct,
-  obs.p_obs_spotlit,
-  obs.p_obs_nonspotlit;
-")
-
-network_model_df <- attach_condition_metadata(
-  network_model_df
-)
+# network_model_df <- DBI::dbGetQuery(con, "
+# WITH gt_aug AS (
+#   SELECT
+#     dataset,
+#     replicate_id,
+#     density AS gt_density,
+#     dcent AS gt_dcent,
+#     clustering AS gt_clustering,
+#     APL AS gt_APL,
+#     size AS gt_size,
+#     components AS gt_components
+# 
+#   FROM network_results_gt
+#   WHERE source = 'true'
+# )
+# 
+# SELECT
+#   obs.dataset,
+#   obs.replicate_id,
+#   obs.alpha,
+#   obs.spotlight_pct,
+#   obs.p_obs_nonspotlit,
+#   obs.p_obs_spotlit,
+# 
+#   obs.density AS density_obs,
+#   gt.gt_density,
+# 
+#   obs.dcent AS dcent_obs,
+#   gt.gt_dcent,
+# 
+#   obs.clustering AS clustering_obs,
+#   gt.gt_clustering,
+# 
+#   obs.APL AS APL_obs,
+#   gt.gt_APL,
+# 
+#   obs.size AS obs_size,
+#   gt.gt_size,
+# 
+#   obs.components AS components_obs,
+#   gt.gt_components,
+# 
+#   CONCAT(obs.dataset, '_', obs.replicate_id) AS base_graph_id
+# 
+# FROM network_results AS obs
+# 
+# INNER JOIN gt_aug AS gt
+#   ON obs.dataset = gt.dataset
+#  AND obs.replicate_id = gt.replicate_id
+# 
+# WHERE obs.source = 'observed'
+# 
+# ORDER BY
+#   obs.dataset,
+#   obs.replicate_id,
+#   obs.alpha,
+#   obs.spotlight_pct,
+#   obs.p_obs_spotlit,
+#   obs.p_obs_nonspotlit;
+# ")
+# 
+# network_model_df <- attach_condition_metadata(
+#   network_model_df
+# )
 
   },
   finally = {
