@@ -173,38 +173,41 @@ DBI::dbExecute(
 
 ############# Query top of databases to give a visual on structure ##############
 
-node_results_gt <- DBI::dbGetQuery(con, "
-                                SELECT *
-                                FROM node_results_gt
-                                ORDER BY dataset, replicate_id, alpha, spotlight_pct, NodeID
-                                LIMIT 50;
-                                ")
+# Below are primarily useful for getting table structure for writing your own
+# queries, they are commented out because they are very computationally expensive
 
-node_results <- DBI::dbGetQuery(con, "
-                                SELECT *
-                                FROM node_results
-                                ORDER BY dataset, replicate_id, alpha, spotlight_pct, NodeID
-                                LIMIT 50;
-                                ")
-
-#node_results_ranked <- DBI::dbGetQuery(con, "
+# node_results_gt <- DBI::dbGetQuery(con, "
+#                                 SELECT *
+#                                 FROM node_results_gt
+#                                 ORDER BY dataset, replicate_id, alpha, spotlight_pct, NodeID
+#                                 LIMIT 50;
+#                                 ")
+# 
+# node_results <- DBI::dbGetQuery(con, "
+#                                 SELECT *
+#                                 FROM node_results
+#                                 ORDER BY dataset, replicate_id, alpha, spotlight_pct, NodeID
+#                                 LIMIT 50;
+#                                 ")
+# 
+# node_results_ranked <- DBI::dbGetQuery(con, "
 #                                       SELECT *
 #                                       FROM node_results_ranked
 #                                       ORDER BY dataset, replicate_id, alpha, spotlight_pct, NodeID
 #                                       LIMIT 50;
+#                                        ")
+# 
+# network_results_gt <- DBI::dbGetQuery(con, "
+#                                       SELECT *
+#                                       FROM network_results_gt
+#                                       LIMIT 50;
 #                                       ")
-
-network_results_gt <- DBI::dbGetQuery(con, "
-                                      SELECT *
-                                      FROM network_results_gt
-                                      LIMIT 50;
-                                      ")
-
-network_results <- DBI::dbGetQuery(con, "
-                                   SELECT *
-                                   FROM network_results
-                                   LIMIT 50;
-                                   ")
+# 
+# network_results <- DBI::dbGetQuery(con, "
+#                                    SELECT *
+#                                    FROM network_results
+#                                    LIMIT 50;
+#                                    ")
 
 ##################################### SAMPLING COVERAGE #####################################
 
