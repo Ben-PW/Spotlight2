@@ -101,13 +101,13 @@ plot_coverage_heatmap <- function(
     ) +
     ggplot2::facet_grid(
       target_centralisation ~ alpha,
-      labeller = ggplot2::labeller(
-        target_centralisation = function(value) {
-          paste(value, "centralisation")
-        },
-        alpha = function(value) {
-          paste0("alpha = ", value)
-        }
+      labeller = ggplot2::label_bquote(
+        rows = C == .(
+          as.numeric(as.character(target_centralisation))
+        ),
+        cols = alpha == .(
+          as.numeric(as.character(alpha))
+        )
       )
     ) +
     ggplot2::scale_fill_viridis_c(
