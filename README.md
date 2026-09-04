@@ -111,6 +111,7 @@ simulation_packages <- c(
   "scales",
   "sna",
   "stringr",
+  "svglite",
   "tibble",
   "tidyr"
 )
