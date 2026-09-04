@@ -16,8 +16,14 @@ source(
   )
 )
 
-validate_visualisation_packages()
 validate_visualisation_config(config$visualisations)
+validate_visualisation_packages(
+  if (config$visualisations$save_plots) {
+    config$visualisations$output_formats
+  } else {
+    character()
+  }
+)
 
 visualisation_module_files <- c(
   "Coverage_heatmap.R",
@@ -213,7 +219,7 @@ if ("rank_lift_contour" %in% visualisation_config$plots_to_run) {
 }
 
 # Plot saving configuration
-visualisation_plot_files <- character()
+visualisation_plot_files <- list()
 
 if (visualisation_config$save_plots) {
   
@@ -236,17 +242,20 @@ if (visualisation_config$save_plots) {
     
     dimensions <- get_plot_dimensions(plot_name)
     
-    output_filename <- file.path(
+    output_stem <- file.path(
       figures_directory,
-      paste0(plot_name, ".pdf")
+      plot_name
     )
     
     visualisation_plot_files[[plot_name]] <-
-      save_visualisation_pdf(
+      save_visualisation_files(
         plot = visualisation_plots[[plot_name]],
-        filename = output_filename,
+        output_stem = output_stem,
         width_mm = dimensions[["width"]],
-        height_mm = dimensions[["height"]]
+        height_mm = dimensions[["height"]],
+        formats = visualisation_config$output_formats,
+        png_dpi = visualisation_config$png_dpi,
+        background = visualisation_config$output_background
       )
   }
 }

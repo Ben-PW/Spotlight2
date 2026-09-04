@@ -127,8 +127,8 @@ plot_coverage_heatmap <- function(
         scales::percent(spotlight_pct_choice, accuracy = 1),
         " of nodes spotlit"
       ),
-      subtitle = paste(
-        "Values averaged across ground-truth networks,",
+      subtitle = paste0(
+        "Values averaged across ground-truth networks,\n",
         "network sizes and average-degree conditions"
       )
     ) +

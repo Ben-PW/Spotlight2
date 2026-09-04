@@ -40,13 +40,13 @@ config <- list(
     
     # Select the downstream stages to run from Spotlight_main.R.
     # This can be FALSE if simulation has already run and written results to db
-    run_spotlight_simulation = TRUE,
+    run_spotlight_simulation = FALSE,
 
     # Format results database to facilitate querying
     # This can be FALSE when querying an existing, already formatted database.
     # NB this database will remain consistent between R sessions, meaning further
     # formatting stages are not required once one has run.
-    run_database_formatting = TRUE,
+    run_database_formatting = FALSE,
 
     # Query the formatted database and create analysis data frames in R.
     # This can be FALSE if queried datasets are already in the environment
@@ -94,7 +94,7 @@ config <- list(
     ),
     
     # Directory used by the visualisation scripts.
-    figures = here::here("Figures")
+    figures = here::here("Figures", "Reduced_alphas")
   ),
   
   output = list(
@@ -293,7 +293,7 @@ config <- list(
 
     # Alpha values shown in the figures. NULL uses every alpha available in
     # the queried results database.
-    alphas_to_plot = NULL,
+    alphas_to_plot = c(0, 2, 8),
 
     # Node-centrality metrics included in correlation, Top-N and rank-lift
     # figures.
@@ -328,8 +328,11 @@ config <- list(
     supplementary_plots = TRUE,
 
     # Plot objects are always retained in `visualisation_plots`. These options
-    # control PDF output.
-    save_plots = TRUE
+    # control publication-file output for both main and supplementary figures.
+    save_plots = TRUE,
+    output_formats = c("pdf", "svg", "png"),
+    png_dpi = 600,
+    output_background = "white"
     #save_supplementary_coverage = TRUE
   )
 )
@@ -415,8 +418,18 @@ stopifnot(
   length(config$visualisations$show_top_n_alignment) == 1L,
   is.logical(config$visualisations$save_plots),
   length(config$visualisations$save_plots) == 1L,
-  is.logical(config$visualisations$save_plots),
-  length(config$visualisations$save_plots) == 1L,
+  is.character(config$visualisations$output_formats),
+  length(config$visualisations$output_formats) > 0L,
+  !anyDuplicated(config$visualisations$output_formats),
+  all(config$visualisations$output_formats %in% c("pdf", "svg", "png")),
+  is.numeric(config$visualisations$png_dpi),
+  length(config$visualisations$png_dpi) == 1L,
+  is.finite(config$visualisations$png_dpi),
+  config$visualisations$png_dpi > 0,
+  is.character(config$visualisations$output_background),
+  length(config$visualisations$output_background) == 1L,
+  !is.na(config$visualisations$output_background),
+  nzchar(config$visualisations$output_background),
   is.logical(config$visualisations$supplementary_plots),
   length(config$visualisations$supplementary_plots) == 1L
   #is.logical(config$visualisations$save_supplementary_coverage),

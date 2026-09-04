@@ -6,7 +6,7 @@
 ################################################################################
 
 # Check the currently required packagaes are available
-validate_visualisation_packages <- function() {
+validate_visualisation_packages <- function(output_formats) {
   required_packages <- c(
     "akima",
     "dplyr",
@@ -15,6 +15,14 @@ validate_visualisation_packages <- function() {
     "scales",
     "tidyr"
   )
+
+  if ("svg" %in% output_formats) {
+    required_packages <- c(required_packages, "svglite")
+  }
+
+  if ("png" %in% output_formats) {
+    required_packages <- c(required_packages, "ragg")
+  }
 
   missing_packages <- required_packages[
     !vapply(
@@ -90,7 +98,10 @@ validate_visualisation_config <- function(vis_config) {
     "show_coverage_values",
     "show_top_n_alignment",
     "supplementary_plots",
-    "save_plots"
+    "save_plots",
+    "output_formats",
+    "png_dpi",
+    "output_background"
     #"save_supplementary_coverage"
   )
 
@@ -214,6 +225,68 @@ validate_visualisation_config <- function(vis_config) {
       paste(invalid_logical_settings, collapse = ", ")
     )
   }
+
+  supported_output_formats <- c("pdf", "svg", "png")
+
+  if (
+    !is.character(vis_config$output_formats) ||
+    length(vis_config$output_formats) == 0L ||
+    anyNA(vis_config$output_formats) ||
+    any(vis_config$output_formats == "") ||
+    anyDuplicated(vis_config$output_formats)
+  ) {
+    stop(
+      "`config$visualisations$output_formats` must be a non-empty character ",
+      "vector without missing or duplicate values."
+    )
+  }
+
+  unsupported_output_formats <- setdiff(
+    vis_config$output_formats,
+    supported_output_formats
+  )
+
+  if (length(unsupported_output_formats) > 0L) {
+    stop(
+      "Unsupported visualisation output formats: ",
+      paste(unsupported_output_formats, collapse = ", "),
+      ". Available formats are: ",
+      paste(supported_output_formats, collapse = ", "),
+      "."
+    )
+  }
+
+  if (
+    !is.numeric(vis_config$png_dpi) ||
+    length(vis_config$png_dpi) != 1L ||
+    !is.finite(vis_config$png_dpi) ||
+    vis_config$png_dpi <= 0
+  ) {
+    stop("`config$visualisations$png_dpi` must be one positive number.")
+  }
+
+  if (
+    !is.character(vis_config$output_background) ||
+    length(vis_config$output_background) != 1L ||
+    is.na(vis_config$output_background) ||
+    !nzchar(vis_config$output_background)
+  ) {
+    stop(
+      "`config$visualisations$output_background` must be one non-empty colour."
+    )
+  }
+
+  tryCatch(
+    grDevices::col2rgb(vis_config$output_background),
+    error = function(error) {
+      stop(
+        "`config$visualisations$output_background` is not a valid R colour: ",
+        vis_config$output_background,
+        ".",
+        call. = FALSE
+      )
+    }
+  )
 
   invisible(vis_config)
 }
@@ -450,13 +523,16 @@ surface_has_contour <- function(
 }
 
 
-save_visualisation_pdf <- function(
+save_visualisation_files <- function(
     plot,
-    filename,
+    output_stem,
     width_mm,
-    height_mm
+    height_mm,
+    formats = c("pdf", "svg", "png"),
+    png_dpi = 600,
+    background = "white"
 ) {
-  output_directory <- dirname(filename)
+  output_directory <- dirname(output_stem)
 
   dir.create(
     output_directory,
@@ -464,19 +540,43 @@ save_visualisation_pdf <- function(
     showWarnings = FALSE
   )
 
-  ggplot2::ggsave(
-    filename = filename,
-    plot = plot,
-    device = grDevices::cairo_pdf,
-    width = width_mm,
-    height = height_mm,
-    units = "mm",
-    bg = "white"
+  output_paths <- stats::setNames(
+    paste0(output_stem, ".", formats),
+    formats
   )
 
-  normalizePath(
-    filename,
+  for (format in formats) {
+    device <- switch(
+      format,
+      pdf = grDevices::cairo_pdf,
+      svg = svglite::svglite,
+      png = ragg::agg_png
+    )
+
+    save_arguments <- list(
+      filename = output_paths[[format]],
+      plot = plot,
+      device = device,
+      width = width_mm,
+      height = height_mm,
+      units = "mm",
+      bg = background
+    )
+
+    if (identical(format, "png")) {
+      save_arguments$dpi <- png_dpi
+    }
+
+    do.call(ggplot2::ggsave, save_arguments)
+  }
+
+  output_paths[] <- vapply(
+    output_paths,
+    normalizePath,
     winslash = "/",
-    mustWork = TRUE
+    mustWork = TRUE,
+    FUN.VALUE = character(1)
   )
+
+  invisible(output_paths)
 }
