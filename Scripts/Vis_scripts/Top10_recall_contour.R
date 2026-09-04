@@ -308,7 +308,7 @@ plot_recall_contour <- function(
       y = expression(p[plain(s)]),
       title = paste0(
         top_n_label,
-        " node recall under spotlighted observation"
+        " node recall under spotlight observation"
       ),
       subtitle = paste0(
         "Spotlight proportion = ",

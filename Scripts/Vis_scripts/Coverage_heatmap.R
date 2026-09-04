@@ -123,7 +123,7 @@ plot_coverage_heatmap <- function(
       x = expression(p[plain(n)]),
       y = expression(p[plain(s)]),
       title = paste0(
-        "Tie missingness under spotlighted observation: ",
+        "Tie missingness under spotlight observation: ",
         scales::percent(spotlight_pct_choice, accuracy = 1),
         " of nodes spotlit"
       ),
@@ -147,7 +147,7 @@ plot_coverage_heatmap <- function(
           label = scales::percent(mean_missingness, accuracy = 1),
           colour = text_colour
         ),
-        size = 2.7,
+        size = 2.1,
         show.legend = FALSE
       ) +
       ggplot2::scale_colour_identity()

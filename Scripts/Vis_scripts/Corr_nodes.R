@@ -160,7 +160,7 @@ plot_node_correlation_heatmap <- function(
       y = expression(p[plain(s)]),
       title = paste0(
         correlation_title,
-        " under spotlighted observation"
+        " under spotlight observation"
       ),
       subtitle = paste0(
         "Spotlight proportion = ",
