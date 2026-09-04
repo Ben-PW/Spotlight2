@@ -210,7 +210,7 @@ make_bias_breaks <- function(
   if (bias_type == "absolute") {
     seq(0, limit, length.out = 11)
   } else {
-    seq(-limit, limit, length.out = 21)
+    seq(-1, 1, by = 0.1)
   }
 }
 
@@ -234,6 +234,15 @@ plot_network_bias_contour <- function(
     values = interpolated_df$mean_bias,
     bias_type = bias_type
   )
+
+  bias_labels <- scales::label_number(accuracy = 0.1)(
+    bias_breaks
+  )
+
+  if (bias_type == "relative") {
+    # Retain 0.1-wide colour bands while labelling every 0.2.
+    bias_labels[seq_along(bias_labels) %% 2L == 0L] <- ""
+  }
 
   fill_label <- if (bias_type == "absolute") {
     "Mean absolute\nrelative bias"
@@ -325,8 +334,9 @@ plot_network_bias_contour <- function(
     ggplot2::scale_fill_viridis_b(
       option = "magma",
       breaks = bias_breaks,
-      labels = scales::label_number(accuracy = 0.1),
+      labels = bias_labels,
       limits = range(bias_breaks),
+      oob = scales::squish,
       name = fill_label,
       guide = ggplot2::guide_coloursteps(
         direction = "vertical",
@@ -359,7 +369,7 @@ plot_network_bias_contour <- function(
     ggplot2::labs(
       x = expression(p[plain(n)]),
       y = expression(p[plain(s)]),
-      title = metric_label,
+      title = paste0("Mean relative bias in ",metric_label, " under spotlight observation"),
       subtitle = paste0(
         "Spotlight proportion = ",
         scales::percent(

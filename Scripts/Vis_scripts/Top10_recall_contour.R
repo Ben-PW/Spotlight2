@@ -201,16 +201,14 @@ plot_recall_contour <- function(
     ) |>
     dplyr::mutate(
       alignment_label = paste0(
-        "GT ",
-        top_n_label,
-        " spotlit: ",
+      #  "% GT spotlit: ",
         scales::percent(
           mean_gt_spotlight_alignment,
           accuracy = 1
         )
       ),
-      x_position = min(x_breaks) + 0.05 * x_range,
-      y_position = max(y_breaks) - 0.05 * y_range
+      x_position = min(x_breaks) + 0.75 * x_range,
+      y_position = max(y_breaks) - 0.85 * y_range
     )
 
   plot <- ggplot2::ggplot(
@@ -347,7 +345,7 @@ plot_recall_contour <- function(
         inherit.aes = FALSE,
         hjust = 0,
         vjust = 1,
-        size = 2.1,
+        size = 2.9,
         linewidth = 0,
         fill = "white",
         colour = "black",
