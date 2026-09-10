@@ -97,12 +97,19 @@ sampleDatasets <- function(networks, target_n = 100) {
     return(networks)
   }
   
+  # Index via sample.int(): base::sample() treats a single numeric value x as
+  # 1:x, which can silently select a network belonging to another basis.
   one_per_basis <- split(seq_along(networks), basis_ids) |>
-    lapply(function(idx) sample(idx, size = 1)) |>
+    lapply(function(idx) idx[[sample.int(length(idx), size = 1L)]]) |>
     unlist(use.names = FALSE)
   
   if (length(one_per_basis) >= target_n) {
     keep_ids <- sample(one_per_basis, size = target_n, replace = FALSE)
+
+    if (anyDuplicated(keep_ids)) {
+      stop("Internal error: duplicated network indices were selected.")
+    }
+
     return(networks[keep_ids])
   }
   
@@ -112,6 +119,10 @@ sampleDatasets <- function(networks, target_n = 100) {
   extra_ids <- sample(remaining_pool, size = remaining_needed, replace = FALSE)
   
   keep_ids <- c(one_per_basis, extra_ids)
+
+  if (anyDuplicated(keep_ids)) {
+    stop("Internal error: duplicated network indices were selected.")
+  }
   
   networks[keep_ids]
 }
