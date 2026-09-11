@@ -235,6 +235,13 @@ datasets <- purrr::imap(
   }
 )
 
+#datasets_screened <- purrr::map(datasets, "networks")
+
+#saveRDS(
+#  datasets_screened,
+#  "Data/datasets_screened.rds"
+#)
+
 #plot(datasets$n60_ad3_c3$diagnostics)
 #par(mfrow = c(6,6), mar = c(1,1,1,1))
 #plotSimNetworks(datasets$n60_ad3_c3$networks)
