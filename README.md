@@ -46,17 +46,17 @@ Database formatting and analysis queries
 Figures
 ```
 ## Repository Structure
-Note that the results database 'spotlight_probability_results.db' is not present in this repository, as the file is approximately 16GB (if the simulation is run with default parameters on the provided data). However, this file can be fully reconstructed with the provided code.
+Note that the results database 'spotlight.duckdb' is not present in this repository, as the file is approximately 16GB (if the simulation is run with default parameters on the provided data). However, this file can be fully reconstructed with the provided code.
 ```text
 Spotlight2/
 ├── Spotlight_main.R
 ├── Config/
 │   └── Config.R
 ├── Data/
-│   ├── datasets_final
+│   ├── datasets_screened
 │   └── datasets_final_conditions.csv
 ├── Results/
-│   └── spotlight_probability_results.duckdb
+│   └── spotlight.duckdb
 ├── Scripts/
 │   ├── Data_simulation.R
 │   ├── Data_simulation_helpers.R
@@ -82,7 +82,7 @@ The key files are:
 
 ```Spotlight_main.R```: Script co-ordinating the main workflow.  
 ```Config/config.R```: Script containing user definable variables.  
-```Data/Datasets_final```: Supplied datasets used for the spotlight study.  
+```Data/Datasets_screened```: Supplied datasets used for the spotlight study.  
 ```Data/Datasets_final_conditions.csv```: Simulation condition metadata required for database queries. Generated automatically by data simulation stage.  
 ```Scripts/Database_queries.R```: Queries the database to pull required data into RAM.  
 ```Scripts/Visualisations.R```: Coordinates the visualisation scripts and saves output to ```Figures/```.  
@@ -197,7 +197,7 @@ And instead change the ```database``` path in ```config.R```, for example:
 # DuckDB results database created by Spotlight_main.R.
     database = here::here(
       "Results",
-      "spotlight_probability_results.duckdb"
+      "spotlight.duckdb"
     ),
 ```
 Becomes
@@ -266,7 +266,7 @@ The pipeline will automatically create a new ```simulation_conditions``` table i
 >   from the newly simulated ground-truth networks.
 > - When `full_rerun = FALSE` and the spotlight simulation stage is run,
 >   `simulation_conditions` is loaded from
->   `Data/datasets_final_conditions.csv`,
+>   `Data/datasets_screened.csv`,
 >   As the pipeline assumes the provided dataset is being used.
 > - When only database formatting, queries, or visualisations are requested,
 >   the pipeline expects the `simulation_conditions` table to already exist
