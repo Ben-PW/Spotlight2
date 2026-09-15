@@ -62,7 +62,7 @@ rsconnect/
 /Spotlight_diagram.R
 
 # Large generated files
-*.rds
+#*.rds
 *.RDS
 *.duckdb
 *.duckdb.wal
