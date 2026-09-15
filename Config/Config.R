@@ -40,13 +40,13 @@ config <- list(
     
     # Select the downstream stages to run from Spotlight_main.R.
     # This can be FALSE if simulation has already run and written results to db
-    run_spotlight_simulation = FALSE,
+    run_spotlight_simulation = TRUE,
 
     # Format results database to facilitate querying
     # This can be FALSE when querying an existing, already formatted database.
     # NB this database will remain consistent between R sessions, meaning further
     # formatting stages are not required once one has run.
-    run_database_formatting = FALSE,
+    run_database_formatting = TRUE,
 
     # Query the formatted database and create analysis data frames in R.
     # This can be FALSE if queried datasets are already in the environment
@@ -72,7 +72,7 @@ config <- list(
     # Supplied pre-generated ground-truth networks.
     datasets = here::here(
       "Data",
-      "datasets_final"
+      "datasets_screened.rds"
     ),
 
     # Metadata describing the conditions used to generate the supplied data.
@@ -84,7 +84,7 @@ config <- list(
     # DuckDB results database created by Spotlight_main.R.
     database = here::here(
       "Results",
-      "spotlight_probability_results.duckdb"
+      "spotlight.duckdb"
     ),
     
     # Error log created if an observation condition fails.
@@ -94,7 +94,7 @@ config <- list(
     ),
     
     # Directory used by the visualisation scripts.
-    figures = here::here("Figures", "Reduced_alphas")
+    figures = here::here("Figures")
   ),
   
   output = list(
@@ -293,7 +293,7 @@ config <- list(
 
     # Alpha values shown in the figures. NULL uses every alpha available in
     # the queried results database.
-    alphas_to_plot = c(0, 2, 8),
+    alphas_to_plot = c(0, 1, 2, 4, 8),
 
     # Node-centrality metrics included in correlation, Top-N and rank-lift
     # figures.
