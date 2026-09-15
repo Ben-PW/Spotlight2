@@ -54,7 +54,8 @@ Spotlight2/
 │   └── Config.R
 ├── Data/
 │   ├── datasets_screened
-│   └── datasets_final_conditions.csv
+│   ├── datasets_final_conditions.csv
+    └── fragmentation_summary.csv
 ├── Results/
 │   └── spotlight.duckdb
 ├── Scripts/
