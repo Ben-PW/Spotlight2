@@ -80,7 +80,12 @@ Spotlight2/
 └── Figures/
     └── Figures_screened/
         ├── Figures_supplemental/
+        │   ├── Spotlight_1pct/
+        │   └── Spotlight_5pct/
         └── Reduced_alphas/
+            └── Figures_supplemental/
+                ├── Spotlight_1pct/
+                └── Spotlight_5pct/
 ```
 The key files are:
 
