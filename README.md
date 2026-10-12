@@ -78,6 +78,9 @@ Spotlight2/
 │       ├── Rel_bias_contour.R
 │       └── Top10_recall_contour.R
 └── Figures/
+    └── Figures_screened/
+        ├── Figures_supplemental/
+        └── Reduced_alphas/
 ```
 The key files are:
 
