@@ -4,7 +4,7 @@ This repository contains the code, simulated network data, and analysis
 pipeline used for:
 
 > [Link to paper to go here]  
-> [Benjamin Palfreeman-Watt, David Buil-Gil, Tomáš Diviák, Nicolas Trajtenberg-Pareja]
+> [Benjamin Palfreeman-Watt, David Buil-Gil, Tomáš Diviák, Nicolás Trajtenberg-Pareja]
 
 (Just went with alphabetical order for now)  
 
@@ -54,7 +54,8 @@ Spotlight2/
 │   └── Config.R
 ├── Data/
 │   ├── datasets_screened
-│   └── datasets_final_conditions.csv
+│   ├── datasets_final_conditions.csv
+    └── fragmentation_summary.csv
 ├── Results/
 │   └── spotlight.duckdb
 ├── Scripts/
