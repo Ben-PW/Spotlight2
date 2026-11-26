@@ -9,13 +9,13 @@ node_correlation_column_map <- list(
   rank = c(
     Degree = "degree_rank_corr",
     Betweenness = "betweenness_rank_corr",
-    Closeness = "harmonic_rank_corr",
+    Harmonic = "harmonic_rank_corr",
     Eigenvector = "eigenvector_rank_corr"
   ),
   pearson = c(
     Degree = "degree_corr",
     Betweenness = "betweenness_corr",
-    Closeness = "harmonic_corr",
+    Harmonic = "harmonic_corr",
     Eigenvector = "eigenvector_corr"
   )
 )
