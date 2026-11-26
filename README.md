@@ -6,8 +6,6 @@ pipeline used for:
 > [Link to paper to go here]  
 > [Benjamin Palfreeman-Watt, David Buil-Gil, Tomáš Diviák, Nicolás Trajtenberg-Pareja]
 
-(Just went with alphabetical order for now)  
-
 The primary purpose of the repository is to support reproduction of the
 simulation results and figures reported in the paper. However, the configuration file
 also allows the manual specification of a variety of simulation parameters for users who wish to explore
