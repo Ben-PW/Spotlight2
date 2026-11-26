@@ -297,13 +297,13 @@ computeCentralityDf <- function(graph_list) {
         normalized = FALSE
       ),
       
-      Closeness_norm = igraph::closeness(
+      Harmonic_norm = igraph::harmonic_centrality(
         g,
         mode = "all",
         normalized = TRUE
       ),
       
-      Closeness_raw = igraph::closeness(
+      Harmonic_raw = igraph::harmonic_centrality(
         g,
         mode = "all",
         normalized = FALSE
