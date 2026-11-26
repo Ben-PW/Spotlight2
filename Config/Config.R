@@ -40,17 +40,17 @@ config <- list(
     
     # Select the downstream stages to run from Spotlight_main.R.
     # This can be FALSE if simulation has already run and written results to db
-    run_spotlight_simulation = TRUE,
+    run_spotlight_simulation = FALSE,
 
     # Format results database to facilitate querying
     # This can be FALSE when querying an existing, already formatted database.
     # NB this database will remain consistent between R sessions, meaning further
     # formatting stages are not required once one has run.
-    run_database_formatting = TRUE,
+    run_database_formatting = FALSE,
 
     # Query the formatted database and create analysis data frames in R.
     # This can be FALSE if queried datasets are already in the environment
-    run_queries = TRUE,
+    run_queries = FALSE,
     
     # Visualise queried data
     run_visualisations = TRUE
@@ -94,7 +94,7 @@ config <- list(
     ),
     
     # Directory used by the visualisation scripts.
-    figures = here::here("Figures")
+    figures = here::here("Figures", "Figures_screened", "Reduced_alphas")
   ),
   
   output = list(
@@ -225,8 +225,8 @@ config <- list(
     seed = 123L,
     
     # Proportion of nodes assigned to the spotlight.
-    spotlight_pcts = c(0.01, 
-                       0.05, 
+    spotlight_pcts = c(0.03, 
+                       0.07, 
                        0.10),
     
     # Strength of degree-biased spotlight assignment.
@@ -293,14 +293,14 @@ config <- list(
 
     # Alpha values shown in the figures. NULL uses every alpha available in
     # the queried results database.
-    alphas_to_plot = c(0, 1, 2, 4, 8),
+    alphas_to_plot = c(0, 2, 8),
 
     # Node-centrality metrics included in correlation, Top-N and rank-lift
     # figures.
     centrality_metrics = c(
       "Degree",
       "Betweenness",
-      "Closeness",
+      "Harmonic",
       "Eigenvector"
     ),
 
@@ -314,7 +314,7 @@ config <- list(
     ),
     
     # Can select "absolute" for absolute relative bias plots
-    network_bias_types = "relative",
+    network_bias_types = c("relative", "absolute"),
 
     # Resolution of interpolated contour surfaces.
     interpolation_grid_n = 100L,

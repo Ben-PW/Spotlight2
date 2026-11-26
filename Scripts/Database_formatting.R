@@ -289,38 +289,21 @@ DBI::dbExecute(
 
 
     /*##########################################################################
-    # Closeness: raw
-    #
-    # Finite values are ranked normally. Non-finite values, which identify
-    # isolates, will form one tied block at the bottom.
+    # Harmonic: raw
     ##########################################################################*/
 
     RANK() OVER (
       PARTITION BY
         dataset,
         replicate_id
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_raw) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_raw) THEN Closeness_raw
-        END DESC NULLS LAST
-    ) AS Closeness_raw_rank,
+      ORDER BY Harmonic_raw DESC
+    ) AS Harmonic_raw_rank,
 
     RANK() OVER (
       PARTITION BY
         dataset,
         replicate_id
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_raw) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_raw) THEN Closeness_raw
-        END DESC NULLS LAST
+      ORDER BY Harmonic_raw DESC
     )
     +
     (
@@ -328,64 +311,36 @@ DBI::dbExecute(
         PARTITION BY
           dataset,
           replicate_id,
-          CASE
-            WHEN isfinite(Closeness_raw) THEN 0
-            ELSE 1
-          END,
-          CASE
-            WHEN isfinite(Closeness_raw) THEN Closeness_raw
-          END
+          Harmonic_raw
       ) - 1
-    ) / 2.0 AS Closeness_raw_avg_rank,
+    ) / 2.0 AS Harmonic_raw_avg_rank,
 
     ROW_NUMBER() OVER (
       PARTITION BY
         dataset,
         replicate_id
       ORDER BY
-        CASE
-          WHEN isfinite(Closeness_raw) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_raw) THEN Closeness_raw
-        END DESC NULLS LAST,
+        Harmonic_raw DESC,
         NodeID
-    ) AS Closeness_raw_top_position,
-
+    ) AS Harmonic_raw_top_position,
+    
 
     /*##########################################################################
-    # Closeness: normalised
-    #
-    # Apply the same bottom-tie treatment to non-finite normalised values.
+    # Harmonic: normalised
     ##########################################################################*/
 
     RANK() OVER (
       PARTITION BY
         dataset,
         replicate_id
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_norm) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_norm) THEN Closeness_norm
-        END DESC NULLS LAST
-    ) AS Closeness_norm_rank,
+      ORDER BY Harmonic_norm DESC
+    ) AS Harmonic_norm_rank,
 
     RANK() OVER (
       PARTITION BY
         dataset,
         replicate_id
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_norm) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_norm) THEN Closeness_norm
-        END DESC NULLS LAST
+      ORDER BY Harmonic_norm DESC
     )
     +
     (
@@ -393,31 +348,18 @@ DBI::dbExecute(
         PARTITION BY
           dataset,
           replicate_id,
-          CASE
-            WHEN isfinite(Closeness_norm) THEN 0
-            ELSE 1
-          END,
-          CASE
-            WHEN isfinite(Closeness_norm) THEN Closeness_norm
-          END
+          Harmonic_norm
       ) - 1
-    ) / 2.0 AS Closeness_norm_avg_rank,
-
+    ) / 2.0 AS Harmonic_norm_avg_rank,
+    
     ROW_NUMBER() OVER (
       PARTITION BY
         dataset,
         replicate_id
       ORDER BY
-        CASE
-          WHEN isfinite(Closeness_norm) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_norm) THEN Closeness_norm
-        END DESC NULLS LAST,
+        Harmonic_norm DESC,
         NodeID
-    ) AS Closeness_norm_top_position,
-
+    ) AS Harmonic_norm_top_position,
 
     /*##########################################################################
     # Eigenvector
@@ -683,91 +625,59 @@ DBI::dbExecute(
 
 
     /*##########################################################################
-    # Closeness: raw
-    #
-    # Finite values are ranked normally. Non-finite values, which identify
-    # isolates will form one tied block at the bottom.
+    # Harmonic: raw
     ##########################################################################*/
 
     RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_raw) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_raw) THEN Closeness_raw
-        END DESC NULLS LAST
-    ) AS Closeness_raw_rank,
-
-    RANK() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_raw) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_raw) THEN Closeness_raw
-        END DESC NULLS LAST
-    )
-    +
-    (
-      COUNT(*) OVER (
-        PARTITION BY
-          dataset,
-          replicate_id,
-          alpha,
-          spotlight_pct,
-          p_obs_spotlit,
-          p_obs_nonspotlit,
-          CASE
-            WHEN isfinite(Closeness_raw) THEN 0
-            ELSE 1
-          END,
-          CASE
-            WHEN isfinite(Closeness_raw) THEN Closeness_raw
-          END
-      ) - 1
-    ) / 2.0 AS Closeness_raw_avg_rank,
-
-    ROW_NUMBER() OVER (
-      PARTITION BY
-        dataset,
-        replicate_id,
-        alpha,
-        spotlight_pct,
-        p_obs_spotlit,
-        p_obs_nonspotlit
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_raw) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_raw) THEN Closeness_raw
-        END DESC NULLS LAST,
-        NodeID
-    ) AS Closeness_raw_top_position,
-
+          PARTITION BY
+            dataset,
+            replicate_id,
+            alpha,
+            spotlight_pct,
+            p_obs_spotlit,
+            p_obs_nonspotlit
+          ORDER BY Harmonic_raw DESC
+        ) AS Harmonic_raw_rank,
+    
+        RANK() OVER (
+          PARTITION BY
+            dataset,
+            replicate_id,
+            alpha,
+            spotlight_pct,
+            p_obs_spotlit,
+            p_obs_nonspotlit
+          ORDER BY Harmonic_raw DESC
+        )
+        +
+        (
+          COUNT(*) OVER (
+            PARTITION BY
+              dataset,
+              replicate_id,
+              alpha,
+              spotlight_pct,
+              p_obs_spotlit,
+              p_obs_nonspotlit,
+              Harmonic_raw
+          ) - 1
+        ) / 2.0 AS Harmonic_raw_avg_rank,
+    
+        ROW_NUMBER() OVER (
+          PARTITION BY
+            dataset,
+            replicate_id,
+            alpha,
+            spotlight_pct,
+            p_obs_spotlit,
+            p_obs_nonspotlit
+          ORDER BY
+            Harmonic_raw DESC,
+            NodeID
+        ) AS Harmonic_raw_top_position,
 
     /*##########################################################################
-    # Closeness: normalised
-    #
-    # Apply the same bottom-tie treatment to non-finite normalised values.
+    # Harmonic: normalised
     ##########################################################################*/
 
     RANK() OVER (
@@ -778,15 +688,8 @@ DBI::dbExecute(
         spotlight_pct,
         p_obs_spotlit,
         p_obs_nonspotlit
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_norm) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_norm) THEN Closeness_norm
-        END DESC NULLS LAST
-    ) AS Closeness_norm_rank,
+      ORDER BY Harmonic_norm DESC
+    ) AS Harmonic_norm_rank,
 
     RANK() OVER (
       PARTITION BY
@@ -796,14 +699,7 @@ DBI::dbExecute(
         spotlight_pct,
         p_obs_spotlit,
         p_obs_nonspotlit
-      ORDER BY
-        CASE
-          WHEN isfinite(Closeness_norm) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_norm) THEN Closeness_norm
-        END DESC NULLS LAST
+      ORDER BY Harmonic_norm DESC
     )
     +
     (
@@ -815,15 +711,9 @@ DBI::dbExecute(
           spotlight_pct,
           p_obs_spotlit,
           p_obs_nonspotlit,
-          CASE
-            WHEN isfinite(Closeness_norm) THEN 0
-            ELSE 1
-          END,
-          CASE
-            WHEN isfinite(Closeness_norm) THEN Closeness_norm
-          END
+          Harmonic_norm
       ) - 1
-    ) / 2.0 AS Closeness_norm_avg_rank,
+    ) / 2.0 AS Harmonic_norm_avg_rank,
 
     ROW_NUMBER() OVER (
       PARTITION BY
@@ -834,16 +724,9 @@ DBI::dbExecute(
         p_obs_spotlit,
         p_obs_nonspotlit
       ORDER BY
-        CASE
-          WHEN isfinite(Closeness_norm) THEN 0
-          ELSE 1
-        END,
-        CASE
-          WHEN isfinite(Closeness_norm) THEN Closeness_norm
-        END DESC NULLS LAST,
+        Harmonic_norm DESC,
         NodeID
-    ) AS Closeness_norm_top_position,
-
+    ) AS Harmonic_norm_top_position,
 
     /*##########################################################################
     # Eigenvector

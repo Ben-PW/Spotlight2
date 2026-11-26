@@ -135,7 +135,7 @@ validate_visualisation_config <- function(vis_config) {
     allowed = c(
       "Degree",
       "Betweenness",
-      "Closeness",
+      "Harmonic",
       "Eigenvector"
     ),
     setting_name = "config$visualisations$centrality_metrics"

@@ -21,7 +21,7 @@ prepare_network_bias_plot_df <- function(
     alphas_to_plot
 ) {
   bias_column <- if (bias_type == "absolute") {
-    "abs_relative_bias"
+    "abs_bias"
   } else {
     "relative_bias"
   }
@@ -369,7 +369,7 @@ plot_network_bias_contour <- function(
     ggplot2::labs(
       x = expression(p[plain(n)]),
       y = expression(p[plain(s)]),
-      title = paste0("Mean relative bias in ",metric_label, " under spotlight observation"),
+      title = paste0("Mean ", bias_type, " bias in " ,metric_label, " under spotlight observation"),
       subtitle = paste0(
         "Spotlight proportion = ",
         scales::percent(

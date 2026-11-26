@@ -326,7 +326,7 @@ network_bias_df <- attach_condition_metadata(network_bias_df)
 
 # Rank correlations use the average-rank columns created in the ranked tables.
 # Non-finite closeness values therefore contribute as a common bottom tie.
-# Raw closeness value correlations remain restricted to finite value pairs.
+# Raw closeness value correlations remain restricted to finite value pairs. 
 
 node_corr_df <- DBI::dbGetQuery(con, "
 
@@ -345,31 +345,31 @@ node_corr_df <- DBI::dbGetQuery(con, "
         obs_rank.p_obs_spotlit,
         obs_rank.p_obs_nonspotlit,
         
-        -- observed rank centralisation
+        -- observed rank centrality
         
         obs_rank.Degree_raw_avg_rank AS obs_degree_rank,
         obs_rank.Betweenness_raw_avg_rank AS obs_betweenness_rank,
-        obs_rank.Closeness_raw_avg_rank AS obs_closeness_rank,
+        obs_rank.Harmonic_raw_avg_rank AS obs_harmonic_rank,
         obs_rank.Eigenvector_avg_rank AS obs_eigenvector_rank,
       
-        -- gt rank centralisation
+        -- gt rank centrality
         
         gt_rank.Degree_raw_avg_rank AS gt_degree_rank,
         gt_rank.Betweenness_raw_avg_rank AS gt_betweenness_rank,
-        gt_rank.Closeness_raw_avg_rank AS gt_closeness_rank,
+        gt_rank.Harmonic_raw_avg_rank AS gt_harmonic_rank,
         gt_rank.Eigenvector_avg_rank AS gt_eigenvector_rank,
         
-        -- obsereved centralisation
+        -- obsereved centrality
         
         obs_rank.Degree_raw AS obs_degree,
-        obs_rank.Closeness_raw AS obs_closeness,
+        obs_rank.Harmonic_raw AS obs_harmonic,
         obs_rank.Betweenness_raw AS obs_betweenness,
         obs_rank.Eigenvector AS obs_eigenvector,
         
-        -- gt centralisation
+        -- gt centrality
         
         gt_rank.Degree_raw AS gt_degree,
-        gt_rank.Closeness_raw AS gt_closeness,
+        gt_rank.Harmonic_raw AS gt_harmonic,
         gt_rank.Betweenness_raw AS gt_betweenness,
         gt_rank.Eigenvector AS gt_eigenvector,
       
@@ -411,39 +411,16 @@ node_corr_df <- DBI::dbGetQuery(con, "
       net_centralisation,
       
       corr(obs_degree_rank, gt_degree_rank) AS degree_rank_corr,
-      corr(obs_closeness_rank, gt_closeness_rank) AS closeness_rank_corr,
+      corr(obs_harmonic_rank, gt_harmonic_rank) AS harmonic_rank_corr,
       corr(obs_betweenness_rank, gt_betweenness_rank) AS betweenness_rank_corr,
       corr(obs_eigenvector_rank, gt_eigenvector_rank) AS eigenvector_rank_corr,
       
       corr(obs_degree, gt_degree) AS degree_corr,
-      
-      /*
-      ** Raw closeness correlations cannot include non-finite values. Isolates are
-      ** therefore excluded from the Pearson value correlation, but they remain in
-      ** the rank correlation through the common bottom-tie rank created above.
-      */
-      
-      corr(
-      CASE 
-        WHEN isfinite(obs_closeness)
-          AND isfinite(gt_closeness)
-        THEN obs_closeness
-      END,
-      CASE
-        WHEN isfinite(obs_closeness)
-          AND isfinite(gt_closeness)
-        THEN gt_closeness
-      END
-      ) AS closeness_corr,
-      
+      corr(obs_harmonic, gt_harmonic) AS harmonic_corr, -- updated per reviewer 1
       corr(obs_betweenness, gt_betweenness) AS betweenness_corr,
       corr(obs_eigenvector, gt_eigenvector) AS eigenvector_corr,
       
-      COUNT(*) AS n_nodes,
-
-      COUNT(*) FILTER (
-        WHERE NOT COALESCE(isfinite(obs_closeness), FALSE)
-      ) AS n_obs_closeness_nonfinite
+      COUNT(*) AS n_nodes
       
     FROM temp
     
@@ -519,12 +496,12 @@ node_rank_df <- DBI::dbGetQuery(con, "
         
         obs.Degree_raw_top_position AS obs_degree_rank,
         obs.Betweenness_raw_top_position AS obs_betweenness_rank,
-        obs.Closeness_raw_top_position AS obs_closeness_rank,
+        obs.Harmonic_raw_top_position AS obs_harmonic_rank,
         obs.Eigenvector_top_position AS obs_eigenvector_rank,
         
         gt.Degree_raw_top_position AS gt_degree_rank,
         gt.Betweenness_raw_top_position AS gt_betweenness_rank,
-        gt.Closeness_raw_top_position AS gt_closeness_rank,
+        gt.Harmonic_raw_top_position AS gt_harmonic_rank,
         gt.Eigenvector_top_position AS gt_eigenvector_rank,
         
         net.size AS net_size,
@@ -547,7 +524,8 @@ node_rank_df <- DBI::dbGetQuery(con, "
 /* 
 ** BLOCK 2:
 ** Create a long table with binary indicators for configurable top-N membership.
-** obs_top10 and gt_top10 are legacy but retained to stop things breaking.
+** obs_top10 and gt_top10 are legacy but retained as I have a feeling removing them
+** might break something.
 */
     
     top10_long AS(
@@ -623,6 +601,7 @@ node_rank_df <- DBI::dbGetQuery(con, "
     UNION ALL
     
     -- Closeness centrality
+    -- UPDATED to Harmonic centrality
     
     SELECT
       dataset,
@@ -637,18 +616,18 @@ node_rank_df <- DBI::dbGetQuery(con, "
       net_av_deg,
       net_centralisation,
       
-      'Closeness' AS metric,
-      obs_closeness_rank AS obs_rank,
-      gt_closeness_rank AS gt_rank,
+      'Harmonic' AS metric,
+      obs_harmonic_rank AS obs_rank,
+      gt_harmonic_rank AS gt_rank,
       CEIL((SELECT top_n_proportion FROM analysis_parameters) * net_size) AS top_n_cutoff,
       
       CASE
-        WHEN obs_closeness_rank <= CEIL((SELECT top_n_proportion FROM analysis_parameters) * net_size) THEN 1
+        WHEN obs_harmonic_rank <= CEIL((SELECT top_n_proportion FROM analysis_parameters) * net_size) THEN 1
         ELSE 0
       END AS obs_top10,
       
       CASE
-        WHEN gt_closeness_rank <= CEIL((SELECT top_n_proportion FROM analysis_parameters) * net_size) THEN 1
+        WHEN gt_harmonic_rank <= CEIL((SELECT top_n_proportion FROM analysis_parameters) * net_size) THEN 1
         ELSE 0
       END AS gt_top10
       
@@ -884,12 +863,12 @@ WITH temp AS (
 
     obs.Degree_raw_avg_rank AS obs_degree_rank,
     obs.Betweenness_raw_avg_rank AS obs_betweenness_rank,
-    obs.Closeness_raw_avg_rank AS obs_closeness_rank,
+    obs.Harmonic_raw_avg_rank AS obs_harmonic_rank,
     obs.Eigenvector_avg_rank AS obs_eigenvector_rank,
 
     gt.Degree_raw_avg_rank AS gt_degree_rank,
     gt.Betweenness_raw_avg_rank AS gt_betweenness_rank,
-    gt.Closeness_raw_avg_rank AS gt_closeness_rank,
+    gt.Harmonic_raw_avg_rank AS gt_harmonic_rank,
     gt.Eigenvector_avg_rank AS gt_eigenvector_rank,
 
     net.size AS net_size,
@@ -967,6 +946,8 @@ rank_long AS (
   UNION ALL
 
   -- Closeness centrality
+  -- UPDATED to harmonic per reviewer 1
+  
   SELECT
     dataset,
     replicate_id,
@@ -980,12 +961,12 @@ rank_long AS (
     net_av_deg,
     net_centralisation,
 
-    'Closeness' AS metric,
-    obs_closeness_rank AS obs_rank,
-    gt_closeness_rank AS gt_rank,
+    'Harmonic' AS metric,
+    obs_harmonic_rank AS obs_rank,
+    gt_harmonic_rank AS gt_rank,
 
-    (gt_closeness_rank - obs_closeness_rank) / NULLIF(net_size - 1, 0) AS norm_rank_lift,
-    ABS(gt_closeness_rank - obs_closeness_rank) / NULLIF(net_size - 1, 0) AS abs_norm_rank_change
+    (gt_harmonic_rank - obs_harmonic_rank) / NULLIF(net_size - 1, 0) AS norm_rank_lift,
+    ABS(gt_harmonic_rank - obs_harmonic_rank) / NULLIF(net_size - 1, 0) AS abs_norm_rank_change
 
   FROM temp
 
@@ -1174,7 +1155,7 @@ bias_long AS (
     obs.density AS observed_value,
     gt.density AS gt_value,
     (obs.density - gt.density) / NULLIF(gt.density, 0) AS relative_bias,
-    ABS((obs.density - gt.density) / NULLIF(gt.density, 0)) AS abs_relative_bias
+    ABS(obs.density - gt.density) AS abs_bias
 
   FROM network_results obs
   INNER JOIN gt_aug gt
@@ -1196,7 +1177,7 @@ bias_long AS (
     obs.dcent AS observed_value,
     gt.dcent AS gt_value,
     (obs.dcent - gt.dcent) / NULLIF(gt.dcent, 0) AS relative_bias,
-    ABS((obs.dcent - gt.dcent) / NULLIF(gt.dcent, 0)) AS abs_relative_bias
+    ABS(obs.dcent - gt.dcent) AS abs_bias
 
   FROM network_results obs
   INNER JOIN gt_aug gt
@@ -1217,7 +1198,7 @@ bias_long AS (
     obs.clustering AS observed_value,
     gt.clustering AS gt_value,
     (obs.clustering - gt.clustering) / NULLIF(gt.clustering, 0) AS relative_bias,
-    ABS((obs.clustering - gt.clustering) / NULLIF(gt.clustering, 0)) AS abs_relative_bias
+    ABS(obs.clustering - gt.clustering) AS abs_bias
 
   FROM network_results obs
   INNER JOIN gt_aug gt
@@ -1239,7 +1220,7 @@ bias_long AS (
     obs.APL AS observed_value,
     gt.APL AS gt_value,
     (obs.APL - gt.APL) / NULLIF(gt.APL, 0) AS relative_bias,
-    ABS((obs.APL - gt.APL) / NULLIF(gt.APL, 0)) AS abs_relative_bias
+    ABS(obs.APL - gt.APL) AS abs_bias
 
   FROM network_results obs
   INNER JOIN gt_aug gt
@@ -1249,7 +1230,7 @@ bias_long AS (
 
 SELECT *
 FROM bias_long
-WHERE abs_relative_bias IS NOT NULL
+WHERE abs_bias IS NOT NULL
 ")
 
 mn_abs_rel_bias_nets <- attach_condition_metadata(
