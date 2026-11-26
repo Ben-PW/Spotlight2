@@ -266,6 +266,12 @@ tryCatch(
                     p_obs_nonspotlit = p_nonspot
                   )
                   
+                  ################### Remove isolates if specified #################
+                  
+                  obs_list <- applyNodeBoundary(
+                    graph_list = obs_list,
+                    remove_isolates = config$spotlight_simulation$remove_isolates
+                  )
                   
                   ################ Store simulation metadata #######################
                   

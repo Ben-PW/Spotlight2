@@ -111,6 +111,34 @@ tagGraphs <- function(
   })
 }
 
+########################## Isolate removal handling ############################
+
+# Added to accomodate reviewer 1 request for node deletion conditions. Deletes
+# isolates and records data on how many were removed, adding this to the graph
+# metadata
+
+applyNodeBoundary <- function(graph_list, remove_isolates = FALSE) {
+  lapply(graph_list, function(g) {
+    n_before <- igraph::vcount(g)
+    isolates <- which(igraph::degree(g, mode = "all") == 0)
+    
+    n_removed <- if (remove_isolates) {
+      length(isolates)
+    } else {
+      0L
+    }
+    
+    if (remove_isolates && length(isolates) > 0L) {
+      g <- igraph::delete_vertices(g, isolates)
+    }
+    
+    igraph::graph_attr(g, "n_nodes_before_removal") <- n_before
+    igraph::graph_attr(g, "n_nodes_removed") <- n_removed
+    igraph::graph_attr(g, "remove_isolates") <- remove_isolates
+    
+    g
+  })
+}
 
 ######################## Compute network-level metrics ##########################
 
@@ -123,6 +151,13 @@ computeMetrics <- function(graph_list) {
     component_sizes <- comp$csize
     n_nodes <- igraph::vcount(g)
     node_degrees <- igraph::degree(g, mode = "all")
+    
+    # Handle components in disconnected graphs
+    largest_component_n <- if (length(component_sizes) > 0L) {
+      max(component_sizes)
+    } else {
+      0L
+    }
     
     # Attach simulation conditions
     tibble::tibble(
@@ -203,37 +238,78 @@ computeMetrics <- function(graph_list) {
         "spotlight_edge_coverage"
       ),
       
-      # Observed network statistics
-      density = igraph::edge_density(g, loops = FALSE),
-      
-      dcent = igraph::centr_degree(
+      # Optional node removal diagnostics
+      n_nodes_before_removal = graphAttrOrNA(
         g,
-        mode = "all",
-        normalized = TRUE
-      )$centralization,
-      
-      clustering = igraph::transitivity(
-        g,
-        type = "global"
+        "n_nodes_before_removal",
+        n_nodes
       ),
+      
+      n_nodes_removed = graphAttrOrNA(
+        g,
+        "n_nodes_removed",
+        0L
+      ),
+      
+      remove_isolates = graphAttrOrNA(
+        g,
+        "remove_isolates",
+        FALSE
+      ),
+      
+      # Observed network statistics
+      # Updated to safely handle node deletion.
+      density = if (n_nodes > 1L) {
+        igraph::edge_density(g, loops = FALSE)
+      } else {
+        NA_real_
+      },
+      
+      dcent = if (n_nodes > 2L) {
+        igraph::centr_degree(
+          g,
+          mode = "all",
+          normalized = TRUE
+        )$centralization
+      } else {
+        NA_real_
+      },
+      
+      clustering = if (n_nodes > 2L) {
+        igraph::transitivity(g, type = "global")
+      } else {
+        NA_real_
+      },
       
       size = n_nodes,
       
-      APL = igraph::mean_distance(
-        g,
-        directed = FALSE,
-        unconnected = TRUE
-      ),
+      APL = if (igraph::ecount(g) > 0L) {
+        igraph::mean_distance(
+          g,
+          directed = FALSE,
+          unconnected = TRUE
+        )
+      } else {
+        NA_real_
+      },
       
       components = comp$no,
       
-      largest_component_n = max(component_sizes),
+      largest_component_n = largest_component_n,
       
-      largest_component_prop = max(component_sizes) / n_nodes,
+      largest_component_prop = if (n_nodes > 0L) {
+        largest_component_n / n_nodes
+      } else {
+        NA_real_
+      },
       
       n_isolates = sum(node_degrees == 0),
       
-      isolate_prop = sum(node_degrees == 0) / n_nodes
+      isolate_prop = if (n_nodes > 0L) {
+        sum(node_degrees == 0) / n_nodes
+      } else {
+        NA_real_
+      }
     )
   })
 }
@@ -244,6 +320,32 @@ computeMetrics <- function(graph_list) {
 computeCentralityDf <- function(graph_list) {
   
   purrr::map_dfr(graph_list, function(g) {
+    
+    # Added to safely handle possible edge cases if all nodes are deleted. Graph
+    # will contribute no actor rows to the databse but will retain its network
+    # level row
+    
+    if (igraph::vcount(g) == 0L) {
+      return(tibble::tibble(
+        dataset = character(),
+        replicate_id = integer(),
+        source = character(),
+        alpha = double(),
+        spotlight_pct = double(),
+        p_obs_spotlit = double(),
+        p_obs_nonspotlit = double(),
+        graph_id = character(),
+        NodeID = integer(),
+        Spotlight = integer(),
+        Degree_norm = double(),
+        Degree_raw = double(),
+        Betweenness_norm = double(),
+        Betweenness_raw = double(),
+        Harmonic_norm = double(),
+        Harmonic_raw = double(),
+        Eigenvector = double()
+      ))
+    }
     
     tibble::tibble(
       dataset = graphAttrOrNA(g, "dataset", NA_character_),

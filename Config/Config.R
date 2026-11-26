@@ -81,10 +81,16 @@ config <- list(
       "datasets_final_conditions.csv"
     ),
     
-    # DuckDB results database created by Spotlight_main.R.
-    database = here::here(
+    # DuckDB results database for conditions where isolates are retained
+    database_keep_isolates = here::here(
       "Results",
       "spotlight.duckdb"
+    ),
+    
+    # DuckDB results database for isolate removal conditions
+    database_remove_isolates = here::here(
+      "Results",
+      "spotlight_rm_isolates.duckdb"
     ),
     
     # Error log created if an observation condition fails.
@@ -254,6 +260,9 @@ config <- list(
       1.0
     ),
     
+    # Parameter determining isolate removal
+    remove_isolates = FALSE,
+    
     # Number of graph-condition results accumulated before writing a batch to
     # DuckDB and deleting from RAM
     flush = 50L
@@ -337,10 +346,23 @@ config <- list(
   )
 )
 
+############################# Database path handling ###########################
+
+# Added to accomodate the rewrite required to address reviewer 1 comments. If 
+# isolates are retained, the db path will run as normal without having to manually
+# change all the values across the pipeline
+
+config$paths$database <- if (
+  config$spotlight_simulation$remove_isolates
+) {
+  config$paths$database_remove_isolates
+} else {
+  config$paths$database_keep_isolates
+}
+
 
 ################################################################################
-# Basic configuration checks
-# Not exhaustive
+# Configuration checks
 ################################################################################
 
 stopifnot(
@@ -431,7 +453,11 @@ stopifnot(
   !is.na(config$visualisations$output_background),
   nzchar(config$visualisations$output_background),
   is.logical(config$visualisations$supplementary_plots),
-  length(config$visualisations$supplementary_plots) == 1L
+  length(config$visualisations$supplementary_plots) == 1L,
+  is.logical(config$spotlight_simulation$remove_isolates),
+  length(config$spotlight_simulation$remove_isolates) == 1L,
+  !is.na(config$spotlight_simulation$remove_isolates)
+  
   #is.logical(config$visualisations$save_supplementary_coverage),
   #length(config$visualisations$save_supplementary_coverage) == 1L
   # config$spotlight_simulation$network_sample_fraction > 0,
